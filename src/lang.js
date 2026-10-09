@@ -31,6 +31,10 @@ function initLang() {
       ru: 'Не удалось подключиться к HDrezka напрямую. Для Media Station X включите «Проксировать HDrezka» и «Проксировать зеркало HDrezka» в настройках Online Mod.',
       en: 'Could not connect to HDrezka directly. For Media Station X, enable the HDrezka proxy and mirror proxy in Online Mod settings.'
     },
+    online_mod_rezka2_session_error: {
+      ru: 'Не удалось подтвердить сессию HDrezka. Проверьте зеркало и прокси, затем повторите вход в настройках Online Mod.',
+      en: 'Could not verify the HDrezka session. Check the mirror and proxy, then log in again in Online Mod settings.'
+    },
     online_mod_watch: {
       ru: 'Смотреть онлайн',
       uk: 'Дивитися онлайн',

@@ -16,7 +16,7 @@ Repository mirror:
 https://raw.githubusercontent.com/mersen1/online_mod/main/online_mod.js
 ```
 
-Current plugin version: `09.10.2026-mersen1.3`. The Pages URL stays the same across releases. Restart Lampa after an update and check the version in Online Mod settings. Disable the original extension when switching: both register the `online_mod` component.
+Current plugin version: `10.10.2026-mersen1.4`. The Pages URL stays the same across releases. Restart Lampa after an update and check the version in Online Mod settings. Disable the original extension when switching: both register the `online_mod` component.
 
 ## HDRezka and Kinogo on TVs
 
@@ -25,6 +25,8 @@ HDRezka is the default source for a fresh installation; a saved source choice is
 Fresh non-Android installations enable metadata proxies for HDRezka, Kinogo and Filmix. Explicit user choices survive restarts. HDRezka login and cookie controls are available outside debug mode. With a proxy enabled, login collects a cookie through that proxy instead of relying on cross-origin browser cookies. Use a proxy you trust: login requests and account cookies pass through it.
 
 For HDRezka in Media Station X, enable both the HDRezka proxy and mirror-proxy switches. Earlier versions could silently disable the HDRezka proxy after HTTP 403; re-enable it if affected. HDRezka now preserves that setting and retries the other built-in worker after connection errors, proxy refusals or server errors. A configured custom proxy remains the only route. Unrelated live-search results trigger a full-page search, and login pages are reported as authorization errors even when the server returns HTTP 404. External proxy or mirror restrictions can still require a compatible custom proxy and an HDRezka account.
+
+Version mersen1.4 preserves the complete login cookie, including `PHPSESSID`, checks that verification did not return another login form, and reads updated cookies even if the source was opened before login. Verified cookies are scoped to the selected mirror, and authenticated requests stay on their login proxy instead of rotating hourly. After upgrading from mersen1.3, log out and log in again in Online Mod settings to replace the incomplete session. The authenticated source does not retry on a different proxy IP; explicit custom-proxy choices remain in effect.
 
 External access is not guaranteed. The latest workstation checks found:
 

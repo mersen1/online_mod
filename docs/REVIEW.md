@@ -14,6 +14,12 @@ For an installation already affected by the old handler, enable both **Прок�
 
 ## Changes
 
+### HDRezka authentication follow-up — mersen1.4
+
+The cookie collector discarded `PHPSESSID` after login and verification. The provider then generated a different session ID for playback, while the verification handler could accept another login page as success. The collector now retains session IDs, cookie rotations and values containing `=`, rejects login forms and deleted sessions during verification, and stores the verified mirror and proxy. Existing provider instances refresh saved cookies before each request. Account cookies are not reused on a different configured mirror; built-in proxy rotation and retries no longer move authenticated requests to another egress IP. Logout uses the same host selection as login and clears the saved scope.
+
+The supplied account reproduced a green login indicator without a saved session on mersen1.3. With mersen1.4, the full session survives login and authenticated full-page search for Midsommar succeeds. At the time of testing, the configured mirror returned HTTP 503 for both Midsommar and Interstellar movie pages, so authenticated playback remains unverified during this external server failure. No credentials, account-cookie values or signed media URLs are saved in these artifacts. Re-login after upgrading is required to replace old incomplete cookies.
+
 - Added Kinogo search, mirror settings, title/year matching and supported NextEmbed/Collaps movie and series player parsing. The default mirror is `.is`; retries cover the configured mirror and `.is`, `.online`, `.ec`, `.no` after challenges or connection/server errors. Unsupported iframe players produce a message.
 - Made HDRezka the fresh-install default source. Previously saved selections remain in effect.
 - Preserved explicit proxy preferences instead of resetting them at startup. Fresh TV/browser installations enable proxies for HDRezka, Kinogo and Filmix. Normalized mirror/custom proxy URLs and made the custom proxy apply consistently to configurable providers.

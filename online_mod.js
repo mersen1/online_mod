@@ -127,6 +127,28 @@
       return normalizeHost(Lampa.Storage.get('online_mod_rezka2_mirror', ''), 'https://kvk.zone');
     }
 
+    function rezka2AuthHost(prox) {
+      return prox && Lampa.Storage.field('online_mod_proxy_rezka2_mirror') !== true ? rezka2Host() : rezka2Mirror();
+    }
+
+    function rezka2Cookie(host) {
+      var saved_host = Lampa.Storage.get('online_mod_rezka2_cookie_host', '') + '';
+      if (saved_host && saved_host !== host) return '';
+      return Lampa.Storage.get('online_mod_rezka2_cookie', '') + '';
+    }
+
+    function rezka2Proxy(preferred) {
+      if (preferred === undefined) preferred = proxy('rezka2');
+      var saved = Lampa.Storage.get('online_mod_rezka2_cookie_proxy', '') + '';
+      var host = rezka2AuthHost(preferred);
+      if (!preferred || !saved || !rezka2Cookie(host) || Lampa.Storage.get('online_mod_rezka2_cookie_host', '') !== host) return preferred;
+      if (Lampa.Storage.field('online_mod_proxy_other') === true && normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) return preferred;
+      var builtin = /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/;
+      // Keep authenticated requests on the egress used for login across hourly rotation.
+      if (builtin.test(preferred) && builtin.test(saved) && parseURL(preferred).pathname === parseURL(saved).pathname) return saved;
+      return preferred;
+    }
+
     function kinobaseMirror() {
       return normalizeHost(Lampa.Storage.get('online_mod_kinobase_mirror', ''), 'https://kinobase.org');
     }
@@ -557,6 +579,9 @@
       isDebug3: isDebug3,
       rezka2Host: rezka2Host,
       rezka2Mirror: rezka2Mirror,
+      rezka2AuthHost: rezka2AuthHost,
+      rezka2Cookie: rezka2Cookie,
+      rezka2Proxy: rezka2Proxy,
       kinobaseMirror: kinobaseMirror,
       setCurrentFanserialsHost: setCurrentFanserialsHost,
       getCurrentFanserialsHost: getCurrentFanserialsHost,
@@ -1741,7 +1766,7 @@
       var prefer_http = Lampa.Storage.field('online_mod_prefer_http') === true;
       var prefer_mp4 = Lampa.Storage.field('online_mod_prefer_mp4') === true;
       var proxy_mirror = Lampa.Storage.field('online_mod_proxy_rezka2_mirror') === true;
-      var prox = component.proxy('rezka2');
+      var prox = Utils.rezka2Proxy(component.proxy('rezka2'));
       var proxies = [prox];
       // Retry only the built-in proxies; keep a custom proxy and its cookies scoped.
       if (!(Lampa.Storage.field('online_mod_proxy_other') === true && Utils.normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) && /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/.test(prox)) {
@@ -1764,18 +1789,7 @@
         prox_enc += 'param/User-Agent=' + encodeURIComponent(user_agent) + '/';
       }
 
-      var cookie = Lampa.Storage.get('online_mod_rezka2_cookie', '') + '';
-      if (cookie.indexOf('PHPSESSID=') == -1) cookie = 'PHPSESSID=' + Utils.randomId(26) + (cookie ? '; ' + cookie : '');
-
-      if (cookie) {
-        if (Lampa.Platform.is('android')) {
-          headers.Cookie = cookie;
-        }
-
-        if (prox) {
-          prox_enc += 'param/Cookie=' + encodeURIComponent(cookie) + '/';
-        }
-      }
+      var anonymous_session = 'PHPSESSID=' + Utils.randomId(26);
 
       var embed = ref;
       var filter_items = {};
@@ -1792,6 +1806,7 @@
         var login_form = str.match(/<form\b[^>]*\bid\s*=\s*["']check-form["']/i);
 
         if (login_form) {
+          Lampa.Storage.set('online_mod_rezka2_status', 'false');
           error_message = Lampa.Lang.translate('online_mod_authorization_required') + ' HDrezka';
           return;
         }
@@ -1824,12 +1839,21 @@
       }
 
       function request(url, success, error, data, options) {
-        var routes = [prox].concat(proxies.filter(function (value) { return value !== prox; }));
+        // A source can already exist when the user logs in from settings.
+        var saved_cookie = Utils.rezka2Cookie(host);
+        var cookie = saved_cookie;
+        if (cookie.indexOf('PHPSESSID=') === -1) cookie = anonymous_session + (cookie ? '; ' + cookie : '');
+        var encoded = prox_enc + 'param/Cookie=' + encodeURIComponent(cookie) + '/';
+        if (Lampa.Platform.is('android')) headers.Cookie = cookie;
+        if (saved_cookie) prox = Utils.rezka2Proxy(prox);
+        var routes = [prox];
+        // Authenticated sessions may be tied to the proxy's egress IP.
+        if (!saved_cookie) routes = routes.concat(proxies.filter(function (value) { return value !== prox; }));
         function attempt(index) {
           var route = routes[index];
           network.clear();
           network.timeout(10000);
-          network['native'](component.proxyLink(url, route, prox_enc, 'enc2t'), function (value) {
+          network['native'](component.proxyLink(url, route, encoded, 'enc2t'), function (value) {
             prox = route;
             success(value);
           }, function (a, c) {
@@ -13781,7 +13805,7 @@
       };
     }
 
-    var mod_version = '09.10.2026-mersen1.3';
+    var mod_version = '10.10.2026-mersen1.4';
     var isMSX = !!(window.TVXHost || window.TVXManager);
     var isTizen = navigator.userAgent.toLowerCase().indexOf('tizen') !== -1;
     var isIFrame = window.parent !== window;
@@ -13919,6 +13943,10 @@
         online_mod_rezka2_direct_error: {
           ru: 'Не удалось подключиться к HDrezka напрямую. Для Media Station X включите «Проксировать HDrezka» и «Проксировать зеркало HDrezka» в настройках Online Mod.',
           en: 'Could not connect to HDrezka directly. For Media Station X, enable the HDrezka proxy and mirror proxy in Online Mod settings.'
+        },
+        online_mod_rezka2_session_error: {
+          ru: 'Не удалось подтвердить сессию HDrezka. Проверьте зеркало и прокси, затем повторите вход в настройках Online Mod.',
+          en: 'Could not verify the HDrezka session. Check the mirror and proxy, then log in again in Online Mod settings.'
         },
         online_mod_watch: {
           ru: 'Смотреть онлайн',
@@ -14668,8 +14696,15 @@
     } ///////Rezka2/////////
 
 
+    function rezka2AuthError(body) {
+      if (Utils.isChallenge(body)) return Lampa.Lang.translate('online_mod_source_challenge');
+      if (/<form\b[^>]*\bid\s*=\s*["']check-form["']/i.test(body)) return Lampa.Lang.translate('online_mod_authorization_required') + ' HDrezka';
+      return '';
+    }
+
     function rezka2Login(success, error) {
-      if (Utils.proxy('rezka2')) {
+      Lampa.Storage.set('online_mod_rezka2_status', 'false');
+      if (Utils.rezka2Proxy()) {
         return rezka2FillCookie(function () {
           Lampa.Storage.set('online_mod_rezka2_status', 'true');
           if (success) success();
@@ -14687,11 +14722,16 @@
       network.timeout(8000);
       network.silent(url, function (json) {
         if (json && (json.success || json.message == 'Уже авторизован на сайте. Необходимо обновить страницу!')) {
-          Lampa.Storage.set('online_mod_rezka2_status', 'true');
           network.clear();
           network.timeout(8000);
           network.silent(host + '/', function (str) {
             str = (str || '').replace(/\n/g, '');
+            var auth_error = rezka2AuthError(str);
+            if (auth_error) {
+              Lampa.Noty.show(auth_error);
+              if (error) error();
+              return;
+            }
             var error_form = str.match(/(<div class="error-code">[^<]*<div>[^<]*<\/div>[^<]*<\/div>)\s*(<div class="error-title">[^<]*<\/div>)/);
 
             if (error_form) {
@@ -14708,6 +14748,9 @@
               return;
             }
 
+            Lampa.Storage.set('online_mod_rezka2_status', 'true');
+            Lampa.Storage.set('online_mod_rezka2_cookie_host', host);
+            Lampa.Storage.set('online_mod_rezka2_cookie_proxy', '');
             if (success) success();
           }, function (a, c) {
             Lampa.Storage.set('online_mod_rezka2_status', 'false');
@@ -14731,11 +14774,14 @@
     }
 
     function rezka2Logout(success, error) {
-      var url = Utils.rezka2Mirror() + '/logout/';
-      var prox = Utils.proxy('rezka2');
-      var cookie = Lampa.Storage.get('online_mod_rezka2_cookie', '') + '';
+      var prox = Utils.rezka2Proxy();
+      var host = Utils.rezka2AuthHost(prox);
+      var url = host + '/logout/';
+      var cookie = Utils.rezka2Cookie(host);
       var encoded = prox && cookie ? 'param/Cookie=' + encodeURIComponent(cookie) + '/' : '';
       Lampa.Storage.set('online_mod_rezka2_cookie', '');
+      Lampa.Storage.set('online_mod_rezka2_cookie_host', '');
+      Lampa.Storage.set('online_mod_rezka2_cookie_proxy', '');
       Lampa.Storage.set('online_mod_rezka2_status', 'false');
       network.clear();
       network.timeout(8000);
@@ -14753,16 +14799,29 @@
     }
 
     function rezka2FillCookie(success, error) {
-      var prox = Utils.proxy('rezka2');
+      Lampa.Storage.set('online_mod_rezka2_status', 'false');
+      var prox = Utils.rezka2Proxy();
       var prox_enc = '';
       var returnHeaders = androidHeaders;
-      var proxy_mirror = Lampa.Storage.field('online_mod_proxy_rezka2_mirror') === true;
-      var host = prox && !proxy_mirror ? Utils.rezka2Host() : Utils.rezka2Mirror();
+      var host = Utils.rezka2AuthHost(prox);
       if (!prox && !returnHeaders) prox = Utils.proxy('cookie');
 
       if (!prox && !returnHeaders) {
         if (error) error();
         return;
+      }
+
+      function confirmed(cookie) {
+        if (!cookie) {
+          Lampa.Noty.show(Lampa.Lang.translate('online_mod_rezka2_session_error'));
+          if (error) error();
+          return;
+        }
+        Lampa.Storage.set('online_mod_rezka2_cookie', cookie);
+        Lampa.Storage.set('online_mod_rezka2_cookie_host', host);
+        Lampa.Storage.set('online_mod_rezka2_cookie_proxy', prox);
+        Lampa.Storage.set('online_mod_rezka2_status', 'true');
+        if (success) success();
       }
 
       var user_agent = Utils.baseUserAgent();
@@ -14784,7 +14843,7 @@
       network.timeout(8000);
       network["native"](Utils.proxyLink(url, prox, prox_enc, 'enc2t'), function (json) {
         var cookie = '';
-        var values = {};
+        var values = Object.create(null);
         var sid = '';
         var body = json && json.body || {};
         body = typeof body === 'string' ? Lampa.Arrays.decodeJson(body, {}) : body;
@@ -14799,14 +14858,13 @@
 
         if (cookieHeaders && cookieHeaders.forEach) {
           cookieHeaders.forEach(function (param) {
-            var parts = param.split(';')[0].split('=');
+            var parts = param.split(';')[0].split(/=(.*)/);
 
             if (parts[0]) {
-              if (parts[1] === 'deleted') delete values[parts[0]];else values[parts[0]] = parts[1] || '';
+              if (!parts[1] || parts[1] === 'deleted' || /;\s*max-age\s*=\s*0\s*(?:;|$)/i.test(param)) delete values[parts[0]];else values[parts[0]] = parts[1];
             }
           });
           sid = values['PHPSESSID'];
-          delete values['PHPSESSID'];
           var cookies = [];
 
           for (var name in values) {
@@ -14832,6 +14890,12 @@
           network["native"](Utils.proxyLink(host + '/', prox, prox_enc2, 'enc2t'), function (str) {
             var json = typeof str === 'string' ? Lampa.Arrays.decodeJson(str, {}) : str;
             var body = (json && json.body || '').replace(/\n/g, '');
+            var auth_error = rezka2AuthError(body);
+            if (auth_error || !body.trim()) {
+              Lampa.Noty.show(auth_error || Lampa.Lang.translate('online_mod_rezka2_session_error'));
+              if (error) error();
+              return;
+            }
             var error_form = body.match(/(<div class="error-code">[^<]*<div>[^<]*<\/div>[^<]*<\/div>)\s*(<div class="error-title">[^<]*<\/div>)/);
 
             if (error_form) {
@@ -14844,14 +14908,13 @@
 
             if (cookieHeaders && cookieHeaders.forEach) {
               cookieHeaders.forEach(function (param) {
-                var parts = param.split(';')[0].split('=');
+                var parts = param.split(';')[0].split(/=(.*)/);
 
                 if (parts[0]) {
-                  if (parts[1] === 'deleted') delete values[parts[0]];else values[parts[0]] = parts[1] || '';
+                  if (!parts[1] || parts[1] === 'deleted' || /;\s*max-age\s*=\s*0\s*(?:;|$)/i.test(param)) delete values[parts[0]];else values[parts[0]] = parts[1];
                 }
               });
               sid = values['PHPSESSID'] || sid;
-              delete values['PHPSESSID'];
               var _cookies = [];
 
               for (var _name in values) {
@@ -14896,6 +14959,12 @@
                 network["native"](Utils.proxyLink(host + '/', prox, prox_enc3, 'enc2t'), function (str) {
                   var json = typeof str === 'string' ? Lampa.Arrays.decodeJson(str, {}) : str;
                   var body = (json && json.body || '').replace(/\n/g, '');
+                  var auth_error = rezka2AuthError(body);
+                  if (auth_error || !body.trim()) {
+                    Lampa.Noty.show(auth_error || Lampa.Lang.translate('online_mod_rezka2_session_error'));
+                    if (error) error();
+                    return;
+                  }
                   var error_form = body.match(/(<div class="error-code">[^<]*<div>[^<]*<\/div>[^<]*<\/div>)\s*(<div class="error-title">[^<]*<\/div>)/);
 
                   if (error_form) {
@@ -14917,14 +14986,13 @@
 
                   if (cookieHeaders && cookieHeaders.forEach) {
                     cookieHeaders.forEach(function (param) {
-                      var parts = param.split(';')[0].split('=');
+                      var parts = param.split(';')[0].split(/=(.*)/);
 
                       if (parts[0]) {
-                        if (parts[1] === 'deleted') delete values[parts[0]];else values[parts[0]] = parts[1] || '';
+                        if (!parts[1] || parts[1] === 'deleted' || /;\s*max-age\s*=\s*0\s*(?:;|$)/i.test(param)) delete values[parts[0]];else values[parts[0]] = parts[1];
                       }
                     });
                     sid = values['PHPSESSID'] || sid;
-                    delete values['PHPSESSID'];
                     var _cookies3 = [];
 
                     for (var _name3 in values) {
@@ -14935,7 +15003,7 @@
                     if (cookie) Lampa.Storage.set('online_mod_rezka2_cookie', cookie);
                   }
 
-                  if (success) success();
+                  confirmed(cookie);
                 }, function (a, c) {
                   Lampa.Noty.show(network.errorDecode(a, c));
                   if (error) error();
@@ -14948,7 +15016,7 @@
               }
             }
 
-            if (success) success();
+            confirmed(cookie);
           }, function (a, c) {
             Lampa.Noty.show(network.errorDecode(a, c));
             if (error) error();

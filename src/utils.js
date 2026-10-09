@@ -87,6 +87,28 @@ function rezka2Mirror() {
   return normalizeHost(Lampa.Storage.get('online_mod_rezka2_mirror', ''), 'https://kvk.zone');
 }
 
+function rezka2AuthHost(prox) {
+  return prox && Lampa.Storage.field('online_mod_proxy_rezka2_mirror') !== true ? rezka2Host() : rezka2Mirror();
+}
+
+function rezka2Cookie(host) {
+  var saved_host = Lampa.Storage.get('online_mod_rezka2_cookie_host', '') + '';
+  if (saved_host && saved_host !== host) return '';
+  return Lampa.Storage.get('online_mod_rezka2_cookie', '') + '';
+}
+
+function rezka2Proxy(preferred) {
+  if (preferred === undefined) preferred = proxy('rezka2');
+  var saved = Lampa.Storage.get('online_mod_rezka2_cookie_proxy', '') + '';
+  var host = rezka2AuthHost(preferred);
+  if (!preferred || !saved || !rezka2Cookie(host) || Lampa.Storage.get('online_mod_rezka2_cookie_host', '') !== host) return preferred;
+  if (Lampa.Storage.field('online_mod_proxy_other') === true && normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) return preferred;
+  var builtin = /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/;
+  // Keep authenticated requests on the egress used for login across hourly rotation.
+  if (builtin.test(preferred) && builtin.test(saved) && parseURL(preferred).pathname === parseURL(saved).pathname) return saved;
+  return preferred;
+}
+
 function kinobaseMirror() {
   return normalizeHost(Lampa.Storage.get('online_mod_kinobase_mirror', ''), 'https://kinobase.org');
 }
@@ -517,6 +539,9 @@ var Utils = {
   isDebug3: isDebug3,
   rezka2Host: rezka2Host,
   rezka2Mirror: rezka2Mirror,
+  rezka2AuthHost: rezka2AuthHost,
+  rezka2Cookie: rezka2Cookie,
+  rezka2Proxy: rezka2Proxy,
   kinobaseMirror: kinobaseMirror,
   setCurrentFanserialsHost: setCurrentFanserialsHost,
   getCurrentFanserialsHost: getCurrentFanserialsHost,

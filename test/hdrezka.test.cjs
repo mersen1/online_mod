@@ -193,3 +193,43 @@ test('HDRezka clears a previous response error when a later page is available', 
     assert.equal(h.events.some(([event]) => event === 'empty'), false);
   } finally { provider.destroy(); h.close(); }
 });
+
+test('An existing HDRezka source picks up the login session on its next request', () => {
+  const h = harness({ initialized: true });
+  const provider = new h.plugin.rezka2(h.component, h.object);
+  h.storage.online_mod_rezka2_cookie = 'PHPSESSID=verified-session; dle_user_id=fixture';
+  h.storage.online_mod_rezka2_cookie_host = 'https://kvk.zone';
+  h.storage.online_mod_rezka2_cookie_proxy = 'https://cors.nb557.workers.dev/';
+  provider.search(h.object, 1, []);
+  const request = h.requests.shift();
+  assert.equal(new URL(request.url).hostname, 'cors.nb557.workers.dev');
+  assert.ok(proxyTarget(request).includes('param/Cookie=' + encodeURIComponent(h.storage.online_mod_rezka2_cookie)));
+  request.error({ status: 502 }, 'error');
+  assert.equal(h.requests.length, 0, 'Authenticated sessions must stay on their login proxy');
+  provider.destroy();
+});
+
+test('HDRezka does not reuse account cookies on a different configured mirror', () => {
+  const h = harness({ initialized: true, storage: {
+    online_mod_rezka2_cookie: 'PHPSESSID=private-session; dle_user_id=fixture', online_mod_rezka2_cookie_host: 'https://old-mirror.example',
+    online_mod_rezka2_mirror: 'https://new-mirror.example'
+  } });
+  const provider = new h.plugin.rezka2(h.component, h.object);
+  provider.search(h.object, 1, []);
+  const request = h.requests.shift();
+  assert.equal(proxyTarget(request).includes('private-session'), false);
+  assert.equal(proxyTarget(request).includes('dle_user_id'), false);
+  provider.destroy();
+});
+
+test('Authenticated proxy pinning respects custom proxy and client-IP choices', () => {
+  const h = harness({ storage: {
+    online_mod_proxy_rezka2_mirror: true, online_mod_rezka2_cookie: 'PHPSESSID=fixture',
+    online_mod_rezka2_cookie_host: 'https://kvk.zone', online_mod_rezka2_cookie_proxy: 'https://cors.nb557.workers.dev/ip1.2.3.4/'
+  } });
+  assert.equal(h.plugin.Utils.rezka2Proxy('https://cors.fx666.workers.dev/ip1.2.3.4/'), 'https://cors.nb557.workers.dev/ip1.2.3.4/');
+  assert.equal(h.plugin.Utils.rezka2Proxy('https://cors.fx666.workers.dev/ip4.3.2.1/'), 'https://cors.fx666.workers.dev/ip4.3.2.1/');
+  h.storage.online_mod_proxy_other = true;
+  h.storage.online_mod_proxy_other_url = 'https://custom.example/';
+  assert.equal(h.plugin.Utils.rezka2Proxy('https://custom.example/'), 'https://custom.example/');
+});

@@ -7,7 +7,7 @@ function rezka2(component, _object) {
   var prefer_http = Lampa.Storage.field('online_mod_prefer_http') === true;
   var prefer_mp4 = Lampa.Storage.field('online_mod_prefer_mp4') === true;
   var proxy_mirror = Lampa.Storage.field('online_mod_proxy_rezka2_mirror') === true;
-  var prox = component.proxy('rezka2');
+  var prox = Utils.rezka2Proxy(component.proxy('rezka2'));
   var proxies = [prox];
   // Retry only the built-in proxies; keep a custom proxy and its cookies scoped.
   if (!(Lampa.Storage.field('online_mod_proxy_other') === true && Utils.normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) && /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/.test(prox)) {
@@ -30,18 +30,7 @@ function rezka2(component, _object) {
     prox_enc += 'param/User-Agent=' + encodeURIComponent(user_agent) + '/';
   }
 
-  var cookie = Lampa.Storage.get('online_mod_rezka2_cookie', '') + '';
-  if (cookie.indexOf('PHPSESSID=') == -1) cookie = 'PHPSESSID=' + Utils.randomId(26) + (cookie ? '; ' + cookie : '');
-
-  if (cookie) {
-    if (Lampa.Platform.is('android')) {
-      headers.Cookie = cookie;
-    }
-
-    if (prox) {
-      prox_enc += 'param/Cookie=' + encodeURIComponent(cookie) + '/';
-    }
-  }
+  var anonymous_session = 'PHPSESSID=' + Utils.randomId(26);
 
   var embed = ref;
   var filter_items = {};
@@ -58,6 +47,7 @@ function rezka2(component, _object) {
     var login_form = str.match(/<form\b[^>]*\bid\s*=\s*["']check-form["']/i);
 
     if (login_form) {
+      Lampa.Storage.set('online_mod_rezka2_status', 'false');
       error_message = Lampa.Lang.translate('online_mod_authorization_required') + ' HDrezka';
       return;
     }
@@ -90,12 +80,21 @@ function rezka2(component, _object) {
   }
 
   function request(url, success, error, data, options) {
-    var routes = [prox].concat(proxies.filter(function (value) { return value !== prox; }));
+    // A source can already exist when the user logs in from settings.
+    var saved_cookie = Utils.rezka2Cookie(host);
+    var cookie = saved_cookie;
+    if (cookie.indexOf('PHPSESSID=') === -1) cookie = anonymous_session + (cookie ? '; ' + cookie : '');
+    var encoded = prox_enc + 'param/Cookie=' + encodeURIComponent(cookie) + '/';
+    if (Lampa.Platform.is('android')) headers.Cookie = cookie;
+    if (saved_cookie) prox = Utils.rezka2Proxy(prox);
+    var routes = [prox];
+    // Authenticated sessions may be tied to the proxy's egress IP.
+    if (!saved_cookie) routes = routes.concat(proxies.filter(function (value) { return value !== prox; }));
     function attempt(index) {
       var route = routes[index];
       network.clear();
       network.timeout(10000);
-      network['native'](component.proxyLink(url, route, prox_enc, 'enc2t'), function (value) {
+      network['native'](component.proxyLink(url, route, encoded, 'enc2t'), function (value) {
         prox = route;
         success(value);
       }, function (a, c) {

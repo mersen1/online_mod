@@ -1,4 +1,4 @@
-var mod_version = '09.10.2026-mersen1.3';
+var mod_version = '10.10.2026-mersen1.4';
 var isMSX = !!(window.TVXHost || window.TVXManager);
 var isTizen = navigator.userAgent.toLowerCase().indexOf('tizen') !== -1;
 var isIFrame = window.parent !== window;
