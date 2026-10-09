@@ -2,6 +2,16 @@
 
 Target: Lampa MX inside Media Station X, including Samsung/Tizen and LG/WebOS. HDRezka and Kinogo are the user's priority sources. The checks run on a Windows workstation and do not certify hardware decoding or playback on every television.
 
+## HDRezka connection follow-up — mersen1.3
+
+HDRezka's live-search error handler could silently persist `online_mod_proxy_rezka2=false` after HTTP 403. In MSX, the following direct request then fails browser CORS and appears as a network error. The handler now preserves the setting, tries the other built-in worker on connection/proxy/server failures, and keeps custom proxies as the sole route. Login/error pages stop retries; an HTTP 404 login page reports authorization rather than a network error. If live search returns unrelated results through a proxy, the plugin uses full-page search. Russian connection messages identify the two proxy switches needed for MSX.
+
+For an installation already affected by the old handler, enable both **Проксировать HDrezka** and **Проксировать зеркало HDrezka** in Online Mod settings. Saved `false` settings are not reset automatically because they can also be deliberate user choices.
+
+`pnpm check` and all 103 tests pass. Regression coverage includes public proxy failures/timeouts, custom-cookie route preservation, cancellation, successful-route reuse, full search and pagination, and HTTP 404/403 authorization responses.
+
+[hdrezka-probe.json](hdrezka-probe.json) records the new bounded metadata checks for Interstellar. With the proxy disabled, the workstation receives HTTP 200 from `kvk.zone` without a browser CORS allowance; the MSX fixture correctly reports direct-access settings guidance. Default proxies now reach an explicit authorization error from the mirror instead of presenting unrelated movies or HTTP 404 as a generic network error. The repository worker executed locally also reaches authorization. Using the main host instead of the mirror reaches a browser challenge through both public workers. No account, media or physical TV verification was performed. External mirror/proxy access remains unresolved without a working authenticated route.
+
 ## Changes
 
 - Added Kinogo search, mirror settings, title/year matching and supported NextEmbed/Collaps movie and series player parsing. The default mirror is `.is`; retries cover the configured mirror and `.is`, `.online`, `.ec`, `.no` after challenges or connection/server errors. Unsupported iframe players produce a message.

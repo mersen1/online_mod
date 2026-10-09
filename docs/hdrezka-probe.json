@@ -1,0 +1,94 @@
+{
+  "checkedAt": "2026-10-09T21:50:15.688Z",
+  "version": "09.10.2026-mersen1.3",
+  "scope": "HDRezka metadata search and movie-page parsing for Interstellar from this workstation with MSX/Tizen fixtures. Browser CORS checked against Origin https://lampa.mx; local-worker executes the repository worker locally. No accounts, media retrieval, hosted worker deployment or physical television verification.",
+  "results": [
+    {
+      "profile": "msx-default",
+      "requests": [
+        {
+          "host": "cors.nb557.workers.dev",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "host": "cors.nb557.workers.dev",
+          "status": 404,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": true
+        }
+      ],
+      "result": "online_mod_authorization_required HDrezka"
+    },
+    {
+      "profile": "msx-proxy-disabled",
+      "requests": [
+        {
+          "host": "kvk.zone",
+          "status": 200,
+          "browserCorsAllowed": false,
+          "challenge": false,
+          "authorizationRequired": false
+        }
+      ],
+      "result": "online_mod_rezka2_direct_error"
+    },
+    {
+      "profile": "msx-main-host",
+      "requests": [
+        {
+          "host": "cors.nb557.workers.dev",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "host": "cors.nb557.workers.dev",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "host": "cors.nb557.workers.dev",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": true,
+          "authorizationRequired": false
+        },
+        {
+          "host": "cors.fx666.workers.dev",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": true,
+          "authorizationRequired": false
+        }
+      ],
+      "result": "online_mod_source_challenge"
+    },
+    {
+      "profile": "local-worker",
+      "requests": [
+        {
+          "host": "local-worker.test",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "host": "local-worker.test",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": true
+        }
+      ],
+      "result": "online_mod_authorization_required HDrezka"
+    }
+  ]
+}

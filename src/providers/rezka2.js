@@ -8,6 +8,11 @@ function rezka2(component, _object) {
   var prefer_mp4 = Lampa.Storage.field('online_mod_prefer_mp4') === true;
   var proxy_mirror = Lampa.Storage.field('online_mod_proxy_rezka2_mirror') === true;
   var prox = component.proxy('rezka2');
+  var proxies = [prox];
+  // Retry only the built-in proxies; keep a custom proxy and its cookies scoped.
+  if (!(Lampa.Storage.field('online_mod_proxy_other') === true && Utils.normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) && /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/.test(prox)) {
+    proxies.push(prox.replace(/cors\.(nb557|fx666)\./, function (match, name) { return 'cors.' + (name === 'nb557' ? 'fx666' : 'nb557') + '.'; }));
+  }
   var host = prox && !proxy_mirror ? Utils.rezka2Host() : Utils.rezka2Mirror();
   var ref = host + '/';
   var logged_in = !(prox || Lampa.Platform.is('android'));
@@ -49,7 +54,8 @@ function rezka2(component, _object) {
   var error_message = '';
 
   function checkErrorForm(str) {
-    var login_form = str.match(/<form id="check-form" class="check-form" method="post" action="\/ajax\/login\/">/);
+    error_message = '';
+    var login_form = str.match(/<form\b[^>]*\bid\s*=\s*["']check-form["']/i);
 
     if (login_form) {
       error_message = Lampa.Lang.translate('online_mod_authorization_required') + ' HDrezka';
@@ -82,6 +88,36 @@ function rezka2(component, _object) {
       return;
     }
   }
+
+  function request(url, success, error, data, options) {
+    var routes = [prox].concat(proxies.filter(function (value) { return value !== prox; }));
+    function attempt(index) {
+      var route = routes[index];
+      network.clear();
+      network.timeout(10000);
+      network['native'](component.proxyLink(url, route, prox_enc, 'enc2t'), function (value) {
+        prox = route;
+        success(value);
+      }, function (a, c) {
+        checkErrorForm(a && typeof a.responseText === 'string' ? a.responseText.replace(/\n/g, '') : '');
+        if (error_message) return error(a, c);
+        var retry = a && (a.onlineChallenge || a.status === 0 || a.status === 403 || a.status >= 500 || /^Malformed URL:/i.test(a.responseText || '')) || c === 'timeout';
+        if (retry && index + 1 < routes.length) attempt(index + 1);
+        else error(a, c);
+      }, data, options);
+    }
+    attempt(0);
+  }
+
+  function sourceError(a, c) {
+    checkErrorForm(a && typeof a.responseText === 'string' ? a.responseText.replace(/\n/g, '') : '');
+    if (error_message) return error_message;
+    if (a && (a.onlineChallenge || a.onlineParseError || /^Malformed URL:/i.test(a.responseText || ''))) return network.errorDecode(a, c);
+    if (a && (a.status === 0 || a.status === 403 || a.status >= 500) || c === 'timeout') {
+      return Lampa.Lang.translate(prox ? 'online_mod_rezka2_proxy_error' : 'online_mod_rezka2_direct_error');
+    }
+    return network.errorDecode(a, c);
+  }
   /**
    * Поиск
    * @param {Object} _object
@@ -112,11 +148,10 @@ function rezka2(component, _object) {
 
     var query_more = function query_more(query, page, data, callback) {
       var url = more_url + '&q=' + encodeURIComponent(query) + '&page=' + encodeURIComponent(page);
-      network.clear();
-      network.timeout(10000);
-      network["native"](component.proxyLink(url, prox, prox_enc, 'enc2t'), function (str) {
+      request(url, function (str) {
         str = (str || '').replace(/\n/g, '');
         checkErrorForm(str);
+        if (error_message) return component.empty(error_message);
         var links = str.match(/<div class="b-content__inline_item-link">\s*<a [^>]*>[^<]*<\/a>\s*<div>[^<]*<\/div>\s*<\/div>/g);
         var have_more = !!str.match(/<a [^>]*>\s*<span class="b-navigation__next\b/);
 
@@ -147,7 +182,7 @@ function rezka2(component, _object) {
 
         if (callback) callback(data, have_more);
       }, function (a, c) {
-        component.empty(network.errorDecode(a, c));
+        component.empty(sourceError(a, c));
       }, false, {
         dataType: 'text',
         withCredentials: logged_in,
@@ -268,6 +303,8 @@ function rezka2(component, _object) {
           }
         }
 
+        // Some public proxies return unrelated live-search results with HTTP 200.
+        if (prox && !is_sure) return search_more({ query: query, page: 1 });
         if (cards.length == 1 && is_sure) getPage(cards[0].link);else if (items.length) {
           _this.wait_similars = true;
           items.forEach(function (c) {
@@ -291,9 +328,7 @@ function rezka2(component, _object) {
 
     var query_search = function query_search(query, data, callback) {
       var postdata = 'q=' + encodeURIComponent(query);
-      network.clear();
-      network.timeout(10000);
-      network["native"](component.proxyLink(url, prox, prox_enc, 'enc2t'), function (str) {
+      request(url, function (str) {
         str = (str || '').replace(/\n/g, '');
         checkErrorForm(str);
         var links = str.match(/<li><a href=.*?<\/li>/g);
@@ -301,16 +336,7 @@ function rezka2(component, _object) {
         if (links && links.length) data = data.concat(links);
         if (callback) callback(data, have_more, query);
       }, function (a, c) {
-        if (prox && a.status == 403 && (!a.responseText || a.responseText.indexOf('<div>105</div>') !== -1)) {
-          Lampa.Storage.set('online_mod_proxy_rezka2', 'false');
-        }
-
-        if (a.status == 403 && a.responseText) {
-          var str = (a.responseText || '').replace(/\n/g, '');
-          checkErrorForm(str);
-        }
-
-        if (error_message) component.empty(error_message);else component.empty(network.errorDecode(a, c));
+        component.empty(sourceError(a, c));
       }, postdata, {
         dataType: 'text',
         withCredentials: logged_in,
@@ -377,16 +403,14 @@ function rezka2(component, _object) {
 
   function getPage(url) {
     url = component.fixLink(url, ref);
-    network.clear();
-    network.timeout(10000);
-    network["native"](component.proxyLink(url, prox, prox_enc, 'enc2t'), function (str) {
+    request(url, function (str) {
       extractData(str);
 
       if (extract.film_id) {
         getEpisodes(success);
       } else if (error_message) component.empty(error_message);else component.emptyForQuery(select_title);
     }, function (a, c) {
-      component.empty(network.errorDecode(a, c));
+      component.empty(sourceError(a, c));
     }, false, {
       dataType: 'text',
       withCredentials: logged_in,
@@ -538,13 +562,11 @@ function rezka2(component, _object) {
           postdata += '&translator_id=' + encodeURIComponent(translator_id);
           postdata += '&favs=' + encodeURIComponent(extract.favs);
           postdata += '&action=get_episodes';
-          network.clear();
-          network.timeout(10000);
-          network["native"](component.proxyLink(url, prox, prox_enc, 'enc2t'), function (json) {
+          request(url, function (json) {
             extractEpisodes(json, translator_id);
             call();
           }, function (a, c) {
-            component.empty(network.errorDecode(a, c));
+            component.empty(sourceError(a, c));
           }, postdata, {
             withCredentials: logged_in,
             headers: headers
@@ -667,9 +689,7 @@ function rezka2(component, _object) {
       postdata += '&action=get_movie';
     }
 
-    network.clear();
-    network.timeout(10000);
-    network["native"](component.proxyLink(url, prox, prox_enc, 'enc2t'), function (json) {
+    request(url, function (json) {
       if (json && json.url) {
         var video = decode(json.url),
             file = '',
@@ -704,7 +724,7 @@ function rezka2(component, _object) {
         } else error();
       } else error();
     }, function (a, c) {
-      error(network.errorDecode(a, c));
+      error(sourceError(a, c));
     }, postdata, {
       withCredentials: logged_in,
       headers: headers

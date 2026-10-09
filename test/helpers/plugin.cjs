@@ -141,7 +141,7 @@ function harness({ storage = {}, android = false, dom = false, initialized = fal
   }
   Object.assign(context, { forcedQuality: '', object: { movie: {} } });
   component.filter = (items, choice) => events.push(['filter', items, choice]);
-  component.similars = (items) => events.push(['similars', items]);
+  component.similars = (items, more, params) => events.push(['similars', items, more, params]);
   component.append = (item) => events.push(['append', item]);
   component.contextmenu = () => {};
   component.start = () => events.push(['start']);

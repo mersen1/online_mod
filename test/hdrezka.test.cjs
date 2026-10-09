@@ -1,7 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const vm = require('node:vm');
-const { harness, source, body, find } = require('./helpers/plugin.cjs');
+const { harness } = require('./helpers/plugin.cjs');
 
 test('HDRezka mirror accepts whitespace, scheme-relative URLs and trailing slashes', () => {
   const h = harness();
@@ -49,25 +48,148 @@ test('HDRezka restriction flag belongs to the current movie page', () => {
 });
 
 test('HDRezka paginated search uses the same encoded proxy protocol as initial search', () => {
-  const h = harness();
-  const node = find(body.find((item) => item.id?.name === 'rezka2'), (item) => item.type === 'FunctionExpression' && item.id?.name === 'query_more');
-  Object.assign(h.context, {
-    more_url: 'https://mirror.example/search/?do=search&subaction=search',
-    prox: 'https://proxy.example/',
-    prox_enc: 'param/Origin=https%3A%2F%2Fmirror.example/',
-    network: new h.context.Lampa.Reguest(),
-    component: h.component,
-    checkErrorForm: () => {},
-    logged_in: false,
-    headers: {}
+  const h = harness({ dom: true, initialized: true, storage: {
+    online_mod_proxy_other: true, online_mod_proxy_other_url: 'https://proxy.example/', online_mod_rezka2_mirror: 'https://mirror.example'
+  } });
+  const provider = new h.plugin.rezka2(h.component, h.object);
+  try {
+    h.object.search = 'Fixture & title';
+    provider.search(h.object, 1, []);
+    h.requests.shift().success('<li><a href="/other.html"><span class="enty">Other</span>Other (2020)</a></li>');
+    const firstPage = h.requests.shift();
+    assert.match(firstPage.url, /^https:\/\/proxy\.example\/enc2\//);
+    firstPage.success('<div class="b-content__inline_item-link"><a href="/fixture.html">Fixture</a><div>2020</div></div><a href="/page2"><span class="b-navigation__next"></span></a>');
+    const similar = h.events.find(([event]) => event === 'similars');
+    assert.ok(similar);
+    similar[2](similar[3]);
+    const request = h.requests.shift();
+    assert.match(request.url, /^https:\/\/proxy\.example\/enc2\//);
+    assert.ok(request.url.endsWith('/?jacred.test'));
+    const encoded = request.url.split('/enc2/')[1].split('/')[0];
+    const target = atob(decodeURIComponent(encoded));
+    assert.ok(target.endsWith('&q=Fixture%20%26%20title&page=2'));
+    request.success('');
+  } finally { provider.destroy(); h.close(); }
+});
+
+function proxyTarget(request) {
+  return atob(decodeURIComponent(request.url.split('/enc2/')[1].split('/')[0]));
+}
+
+for (const failure of [
+  { status: 0, responseText: '' },
+  { status: 403, responseText: '' },
+  { status: 403, responseText: '<div>105</div>' },
+  { status: 502, responseText: '' },
+  { status: 404, responseText: 'Malformed URL: https://kvk.zone/engine/ajax/search.php' }
+]) {
+  test(`HDRezka retries a failed public proxy (${failure.status}) without disabling it`, () => {
+    const h = harness({ initialized: true, platform: 'tizen', msx: true });
+    const provider = new h.plugin.rezka2(h.component, h.object);
+    provider.search(h.object, 1, []);
+    const first = h.requests.shift();
+    first.error({ ...failure }, 'error');
+    const second = h.requests.shift();
+    assert.ok(second);
+    assert.notEqual(new URL(first.url).hostname, new URL(second.url).hostname);
+    assert.equal(proxyTarget(first), proxyTarget(second));
+    assert.equal(first.data, second.data);
+    assert.equal(h.context.Lampa.Storage.field('online_mod_proxy_rezka2'), true);
+    assert.equal(h.events.some(([event]) => event === 'empty'), false);
+    second.error({ ...failure }, 'error');
+    assert.equal(h.requests.length, 0);
+    assert.equal(h.events.filter(([event]) => event === 'empty').length, 1);
+    assert.equal(h.context.Lampa.Storage.field('online_mod_proxy_rezka2'), true);
+    const expected = failure.status === 404 ? 'online_mod_proxy_source_unavailable' : 'online_mod_rezka2_proxy_error';
+    assert.ok(h.events.some(([event, message]) => event === 'empty' && message === expected));
+    provider.destroy();
   });
-  const queryMore = vm.runInContext('(' + source.slice(node.start, node.end) + ')', h.context);
-  queryMore('Fixture & title', 2, [], () => {});
+}
+
+test('HDRezka keeps a custom proxy and its cookie on that proxy after failure', () => {
+  const h = harness({ initialized: true, storage: {
+    online_mod_proxy_other: true, online_mod_proxy_other_url: 'https://private-proxy.example/', online_mod_rezka2_cookie: 'PHPSESSID=fixture; dle_user_id=fixture'
+  } });
+  const provider = new h.plugin.rezka2(h.component, h.object);
+  provider.search(h.object, 1, []);
   const request = h.requests.shift();
-  assert.match(request.url, /^https:\/\/proxy\.example\/enc2\//);
-  assert.ok(request.url.endsWith('/?jacred.test'));
-  const encoded = request.url.split('/enc2/')[1].split('/')[0];
-  const target = atob(decodeURIComponent(encoded));
-  assert.ok(target.endsWith('&q=Fixture%20%26%20title&page=2'));
-  request.success('');
+  assert.equal(new URL(request.url).hostname, 'private-proxy.example');
+  assert.ok(proxyTarget(request).includes('param/Cookie='));
+  request.error({ status: 403, responseText: '' }, 'error');
+  assert.equal(h.requests.length, 0);
+  assert.equal(h.context.Lampa.Storage.field('online_mod_proxy_rezka2'), true);
+  provider.destroy();
+});
+
+test('HDRezka retries a timeout and stops immediately on an authorization response', () => {
+  const h = harness({ initialized: true });
+  const provider = new h.plugin.rezka2(h.component, h.object);
+  provider.search(h.object, 1, []);
+  h.requests.shift().error({}, 'timeout');
+  const retry = h.requests.shift();
+  assert.ok(retry);
+  retry.error({ status: 403, responseText: '<form id="check-form"></form>' }, 'error');
+  assert.equal(h.requests.length, 0);
+  assert.ok(h.events.some(([event, message]) => event === 'empty' && message === 'online_mod_authorization_required HDrezka'));
+  assert.equal(h.context.Lampa.Storage.field('online_mod_proxy_rezka2'), true);
+  provider.destroy();
+});
+
+test('HDRezka direct MSX failure explains which proxy switches to enable', () => {
+  const h = harness({ initialized: true, msx: true, platform: 'tizen', storage: { online_mod_proxy_rezka2: false } });
+  const provider = new h.plugin.rezka2(h.component, h.object);
+  provider.search(h.object, 1, []);
+  const request = h.requests.shift();
+  assert.equal(new URL(request.url).hostname, 'kvk.zone');
+  request.error({ status: 0, responseText: '' }, 'error');
+  assert.equal(h.requests.length, 0);
+  assert.ok(h.events.some(([event, message]) => event === 'empty' && message === 'online_mod_rezka2_direct_error'));
+  assert.equal(h.context.Lampa.Storage.field('online_mod_proxy_rezka2'), false);
+  provider.destroy();
+});
+
+test('HDRezka reports authorization for a failed search-page response after unrelated live results', () => {
+  const h = harness({ dom: true, initialized: true });
+  const provider = new h.plugin.rezka2(h.component, h.object);
+  try {
+    provider.search(h.object, 1, []);
+    h.requests.shift().success('<li><a href="/other.html"><span class="enty">Other</span>Other (2020)</a></li>');
+    const searchPage = h.requests.shift();
+    assert.match(proxyTarget(searchPage), /\/search\/\?do=search&subaction=search&q=Fixture&page=1$/);
+    assert.equal(h.events.some(([event]) => event === 'similars' || event === 'empty'), false);
+    searchPage.error({ status: 404, responseText: "<form class='check-form' action='/ajax/login/' id='check-form'>Login</form>" }, 'error');
+    assert.ok(h.events.some(([event, message]) => event === 'empty' && message === 'online_mod_authorization_required HDrezka'));
+    assert.equal(h.requests.length, 0);
+  } finally { provider.destroy(); h.close(); }
+});
+
+test('HDRezka keeps the successful proxy for the movie page and suppresses cancelled retries', () => {
+  const h = harness({ dom: true, initialized: true });
+  const provider = new h.plugin.rezka2(h.component, h.object);
+  try {
+    provider.search(h.object, 1, []);
+    h.requests.shift().error({ status: 0 }, 'error');
+    const retry = h.requests.shift();
+    retry.success('<li><a href="/fixture.html"><span class="enty">Fixture</span>Fixture (2020)</a></li>');
+    const page = h.requests.shift();
+    assert.equal(new URL(page.url).hostname, new URL(retry.url).hostname);
+    provider.cancel();
+    const count = h.events.length;
+    page.error({ status: 0 }, 'error');
+    retry.error({ status: 0 }, 'error');
+    assert.equal(h.requests.length, 0);
+    assert.equal(h.events.length, count);
+  } finally { provider.destroy(); h.close(); }
+});
+
+test('HDRezka clears a previous response error when a later page is available', () => {
+  const h = harness({ dom: true });
+  const provider = new h.plugin.rezka2(h.component, h.object);
+  try {
+    provider.__test.extractData('<form id="check-form"></form>');
+    provider.__test.getPage('/available.html');
+    h.requests.shift().success('');
+    assert.ok(h.events.some(([event]) => event === 'emptyQuery'));
+    assert.equal(h.events.some(([event]) => event === 'empty'), false);
+  } finally { provider.destroy(); h.close(); }
 });

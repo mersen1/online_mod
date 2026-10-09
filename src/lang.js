@@ -23,6 +23,14 @@ function initLang() {
     online_mod_kinogo_mirror: english('Kinogo mirror URL'),
     online_mod_kinogo_unsupported: english('This Kinogo mirror uses an unsupported player. Try kinogo.is or another source.'),
     online_mod_proxy_source_unavailable: english('The selected proxy does not support this source. Configure your own proxy in Online Mod settings or choose another source.'),
+    online_mod_rezka2_proxy_error: {
+      ru: 'Не удалось подключиться к HDrezka через прокси. Проверьте зеркало и прокси в настройках Online Mod или укажите свой прокси-сервер.',
+      en: 'Could not connect to HDrezka through the proxy. Check the mirror and proxy in Online Mod settings or configure your own proxy server.'
+    },
+    online_mod_rezka2_direct_error: {
+      ru: 'Не удалось подключиться к HDrezka напрямую. Для Media Station X включите «Проксировать HDrezka» и «Проксировать зеркало HDrezka» в настройках Online Mod.',
+      en: 'Could not connect to HDrezka directly. For Media Station X, enable the HDrezka proxy and mirror proxy in Online Mod settings.'
+    },
     online_mod_watch: {
       ru: 'Смотреть онлайн',
       uk: 'Дивитися онлайн',
