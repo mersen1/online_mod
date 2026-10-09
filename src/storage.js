@@ -1,11 +1,11 @@
-var mod_version = '09.10.2026-mersen1.1';
+var mod_version = '09.10.2026-mersen1.2';
 var isMSX = !!(window.TVXHost || window.TVXManager);
 var isTizen = navigator.userAgent.toLowerCase().indexOf('tizen') !== -1;
 var isIFrame = window.parent !== window;
 var isLocal = !startsWith(window.location.protocol, 'http');
 var androidHeaders = Lampa.Platform.is('android') && Utils.checkAndroidVersion(339);
 var filmixHost = Utils.filmixHost();
-var network = new Lampa.Reguest();
+var network = Utils.createRequest();
 var online_loading = false;
 
 function logApp() {
@@ -18,42 +18,22 @@ function logApp() {
 }
 
 function initStorage() {
-  if (!Utils.isDebug()) {
-    Lampa.Storage.set('online_mod_proxy_lumex', 'false');
-    Lampa.Storage.set('online_mod_proxy_rezka2', 'false');
-    Lampa.Storage.set('online_mod_proxy_kinobase', 'false');
-    Lampa.Storage.set('online_mod_proxy_collaps', 'false');
-    Lampa.Storage.set('online_mod_proxy_cdnmovies', 'false');
-    Lampa.Storage.set('online_mod_proxy_fancdn', 'false');
-    Lampa.Storage.set('online_mod_proxy_fancdn2', 'false');
-    Lampa.Storage.set('online_mod_proxy_fanserials', 'false');
-    Lampa.Storage.set('online_mod_proxy_fanserials_cdn', 'false');
-    Lampa.Storage.set('online_mod_proxy_animelib', 'false');
-  } else if (!Lampa.Platform.is('android')) {
-    Lampa.Storage.set('online_mod_proxy_lumex', 'true');
-    Lampa.Storage.set('online_mod_proxy_cdnmovies', 'true');
-    Lampa.Storage.set('online_mod_proxy_fancdn', 'true');
-    Lampa.Storage.set('online_mod_proxy_fancdn2', 'true');
-
-    if (!isLocal) {
-      Lampa.Storage.set('online_mod_proxy_fanserials', 'true');
-    }
-  }
-
-  if (!Lampa.Platform.is('android')) {
-    Lampa.Storage.set('online_mod_proxy_filmix', 'true');
-  }
-
-  Lampa.Storage.set('online_mod_proxy_videoseed', Lampa.Platform.is('android') || isLocal ? 'false' : 'true');
-  Lampa.Storage.set('online_mod_proxy_vibix', Lampa.Platform.is('android') ? 'false' : 'true');
-  Lampa.Storage.set('online_mod_proxy_redheadsound', Lampa.Platform.is('android') ? 'false' : 'true');
-  Lampa.Storage.set('online_mod_proxy_cdnvideohub', 'false');
-  Lampa.Storage.set('online_mod_proxy_videodb', 'false');
-  Lampa.Storage.set('online_mod_proxy_zetflix', 'false');
-  Lampa.Storage.set('online_mod_proxy_kinopub', 'true');
-  Lampa.Storage.set('online_mod_proxy_alloha', 'false');
-  Lampa.Storage.set('online_mod_proxy_hdvb', 'false');
-  Lampa.Storage.set('online_mod_proxy_kp', 'false');
+  var android = Lampa.Platform.is('android');
+  var debugBrowser = Utils.isDebug() && !android;
+  var defaults = {
+    lumex: debugBrowser, rezka2: !android, kinogo: !android,
+    kinobase: false, collaps: false, cdnmovies: debugBrowser,
+    filmix: !android, fancdn: debugBrowser, fancdn2: debugBrowser,
+    fanserials: debugBrowser && !isLocal, fanserials_cdn: false,
+    animelib: false, videoseed: !android && !isLocal,
+    vibix: !android, redheadsound: !android, cdnvideohub: false,
+    videodb: false, zetflix: false, kinopub: true, alloha: false, hdvb: false, kp: false
+  };
+  Object.keys(defaults).forEach(function (name) {
+    var key = 'online_mod_proxy_' + name;
+    // Persist only first-run defaults; never reset a user's transport selection.
+    if (Lampa.Storage.get(key, '') === '') Lampa.Storage.set(key, defaults[name] ? 'true' : 'false');
+  });
   Lampa.Params.trigger('online_mod_iframe_proxy', !isTizen || isLocal);
   Lampa.Params.trigger('online_mod_proxy_iframe', false);
   Lampa.Params.trigger('online_mod_use_stream_proxy', false);
@@ -61,8 +41,9 @@ function initStorage() {
   Lampa.Params.trigger('online_mod_proxy_other', false);
   Lampa.Params.trigger('online_mod_proxy_lumex', false);
   Lampa.Params.trigger('online_mod_proxy_rezka', false);
-  Lampa.Params.trigger('online_mod_proxy_rezka2', false);
-  Lampa.Params.trigger('online_mod_proxy_rezka2_mirror', false);
+  Lampa.Params.trigger('online_mod_proxy_rezka2', !android);
+  Lampa.Params.trigger('online_mod_proxy_rezka2_mirror', true);
+  Lampa.Params.trigger('online_mod_proxy_kinogo', !android);
   Lampa.Params.trigger('online_mod_proxy_kinobase', false);
   Lampa.Params.trigger('online_mod_proxy_collaps', false);
   Lampa.Params.trigger('online_mod_proxy_cdnmovies', false);
@@ -97,6 +78,7 @@ function initStorage() {
   Lampa.Params.select('online_mod_kinobase_mirror', '', '');
   Lampa.Params.select('online_mod_kinobase_cookie', '', '');
   Lampa.Params.select('online_mod_rezka2_mirror', '', '');
+  Lampa.Params.select('online_mod_kinogo_mirror', '', '');
   Lampa.Params.select('online_mod_rezka2_name', '', '');
   Lampa.Params.select('online_mod_rezka2_password', '', '');
   Lampa.Params.select('online_mod_rezka2_cookie', '', '');
@@ -120,8 +102,4 @@ function initStorage() {
     Lampa.Storage.set('online_mod_prefer_http', 'false');
   }
 
-  if (Lampa.Storage.get('online_mod_proxy_reset', '') != 7) {
-    Lampa.Storage.set('online_mod_proxy_lumex', 'true');
-    Lampa.Storage.set('online_mod_proxy_reset', '7');
-  }
 }

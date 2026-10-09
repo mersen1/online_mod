@@ -1,5 +1,6 @@
 function cdnmovies(component, _object) {
-  var network = new Lampa.Reguest();
+  var network = Utils.createRequest(component);
+  this.cancel = function () { network.clear(); };
   var extract = [];
   var object = _object;
   var select_title = '';
@@ -45,6 +46,7 @@ function cdnmovies(component, _object) {
     };
 
     var call_error = function call_error(a, c) {
+      if (a.onlineChallenge) { if (error) error(network.errorDecode(a, c)); return; }
       if ((a.status == 404 || a.status == 403) && (!a.responseText || a.responseText.indexOf('<title>Not Found</title>') !== -1 || a.responseText.indexOf('Не найдено!') !== -1 || a.responseText.indexOf('Контент не найден или недоступен в вашем регионе!') !== -1) || a.status == 0 && a.statusText !== 'timeout') {
         if (callback) callback('');
       } else if (error) error(network.errorDecode(a, c));

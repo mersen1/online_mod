@@ -1,5 +1,6 @@
 function fanserials(component, _object) {
-  var network = new Lampa.Reguest();
+  var network = Utils.createRequest(component);
+  this.cancel = function () { network.clear(); };
   var extract = [];
   var object = _object;
   var select_title = '';
@@ -190,7 +191,7 @@ function fanserials(component, _object) {
   function getStream(element, call, error) {
     getBaseStream(element, function (element) {
       var file = element.stream || '';
-      if (element.qualitys || element.parsed || !endsWith(file, '.m3u8')) return call(element);
+      if (element.qualitys || element.parsed || !Utils.isMediaUrl(file, 'm3u8')) return call(element);
       network.clear();
       network.timeout(10000);
       network["native"](component.proxyLink(file, prox_cdn, '', 'enc2t'), function (str) {

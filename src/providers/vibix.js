@@ -1,5 +1,6 @@
 function vibix(component, _object) {
-  var network = new Lampa.Reguest();
+  var network = Utils.createRequest(component);
+  this.cancel = function () { network.clear(); };
   var extract = {};
   var object = _object;
   var select_title = '';

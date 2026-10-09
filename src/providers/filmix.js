@@ -1,5 +1,6 @@
 function filmix(component, _object, _debug) {
-  var network = new Lampa.Reguest();
+  var network = Utils.createRequest(component);
+  this.cancel = function () { network.clear(); };
   var extract = {};
   var object = _object;
   var debug = _debug;

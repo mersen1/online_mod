@@ -1,7 +1,7 @@
 var proxyInitialized = {};
 var proxyWindow = {};
 var proxyCalls = {};
-var default_balanser = 'cdnvideohub';
+var default_balanser = 'rezka2';
 
 function component(object) {
   var network = new Lampa.Reguest();
@@ -111,6 +111,13 @@ function component(object) {
     name: 'rezka2',
     title: 'HDrezka',
     source: new rezka2(this, object),
+    search: true,
+    kp: false,
+    imdb: false
+  }, {
+    name: 'kinogo',
+    title: 'Kinogo',
+    source: new kinogo(this, object),
     search: true,
     kp: false,
     imdb: false
@@ -393,6 +400,8 @@ function component(object) {
 
 
   this.search = function () {
+    network.clear();
+    all_sources.forEach(function (s) { if (s.source.cancel) s.source.cancel(); });
     this.activity.loader(true);
     this.filter({
       source: filter_sources
@@ -1423,6 +1432,10 @@ function component(object) {
   this.empty = function (msg) {
     var empty = Lampa.Template.get('list_empty');
     if (msg) empty.find('.empty__descr').text(msg);
+    var change = $('<div class="selector online-mod-change-source"></div>').text(Lampa.Lang.translate('online_mod_change_source'));
+    change.on('hover:enter', function () { filter.show(Lampa.Lang.translate('online_mod_balanser'), 'sort'); });
+    empty.append(change);
+    scroll.render().find('.empty').remove();
     scroll.append(empty);
     this.loading(false);
   };

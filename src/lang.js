@@ -6,12 +6,23 @@ function initLang() {
         lang_data = data;
       },
       translate: function translate(key) {
-        return lang_data[key] ? lang_data[key].ru : key;
+        return lang_data[key] ? lang_data[key].ru || lang_data[key].en || key : key;
       }
     };
   }
 
+  function english(text) {
+    // Lampa falls back to Russian for missing translations in other languages.
+    return { en: text, ru: text };
+  }
+
   Lampa.Lang.add({
+    online_mod_source_challenge: english('This source requires a browser challenge. Choose another source or configure a working mirror in Online Mod settings.'),
+    online_mod_source_response_error: english('The source returned an unsupported response. Choose another source or try again later.'),
+    online_mod_change_source: english('Choose another source'),
+    online_mod_kinogo_mirror: english('Kinogo mirror URL'),
+    online_mod_kinogo_unsupported: english('This Kinogo mirror uses an unsupported player. Try kinogo.is or another source.'),
+    online_mod_proxy_source_unavailable: english('The selected proxy does not support this source. Configure your own proxy in Online Mod settings or choose another source.'),
     online_mod_watch: {
       ru: 'Смотреть онлайн',
       uk: 'Дивитися онлайн',

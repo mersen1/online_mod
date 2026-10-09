@@ -1,4 +1,13 @@
 function rezka2Login(success, error) {
+  if (Utils.proxy('rezka2')) {
+    return rezka2FillCookie(function () {
+      Lampa.Storage.set('online_mod_rezka2_status', 'true');
+      if (success) success();
+    }, function () {
+      Lampa.Storage.set('online_mod_rezka2_status', 'false');
+      if (error) error();
+    });
+  }
   var host = Utils.rezka2Mirror();
   var url = host + '/ajax/login/';
   var postdata = 'login_name=' + encodeURIComponent(Lampa.Storage.get('online_mod_rezka2_name', ''));
@@ -31,7 +40,9 @@ function rezka2Login(success, error) {
 
         if (success) success();
       }, function (a, c) {
-        if (success) success();
+        Lampa.Storage.set('online_mod_rezka2_status', 'false');
+        Lampa.Noty.show(network.errorDecode(a, c));
+        if (error) error();
       }, false, {
         dataType: 'text',
         withCredentials: true
@@ -51,9 +62,14 @@ function rezka2Login(success, error) {
 
 function rezka2Logout(success, error) {
   var url = Utils.rezka2Mirror() + '/logout/';
+  var prox = Utils.proxy('rezka2');
+  var cookie = Lampa.Storage.get('online_mod_rezka2_cookie', '') + '';
+  var encoded = prox && cookie ? 'param/Cookie=' + encodeURIComponent(cookie) + '/' : '';
+  Lampa.Storage.set('online_mod_rezka2_cookie', '');
+  Lampa.Storage.set('online_mod_rezka2_status', 'false');
   network.clear();
   network.timeout(8000);
-  network.silent(url, function (str) {
+  network.silent(Utils.proxyLink(url, prox, encoded, 'enc2t'), function (str) {
     Lampa.Storage.set('online_mod_rezka2_status', 'false');
     if (success) success();
   }, function (a, c) {
@@ -62,7 +78,7 @@ function rezka2Logout(success, error) {
     if (error) error();
   }, false, {
     dataType: 'text',
-    withCredentials: true
+    withCredentials: !prox
   });
 }
 
@@ -182,7 +198,8 @@ function rezka2FillCookie(success, error) {
           var verify_cookie;
 
           try {
-            verify_cookie = (0, eval)('"use strict"; (function(name, value){ return {name: name, value: value}; })' + verify_form[1] + ';');
+            var arguments_data = JSON5.parse('[' + verify_form[1].slice(1, -1) + ']');
+            if (typeof arguments_data[0] === 'string' && typeof arguments_data[1] === 'string') verify_cookie = { name: arguments_data[0], value: arguments_data[1] };
           } catch (e) {}
 
           if (verify_cookie) {
@@ -250,7 +267,8 @@ function rezka2FillCookie(success, error) {
 
               if (success) success();
             }, function (a, c) {
-              if (success) success();
+              Lampa.Noty.show(network.errorDecode(a, c));
+              if (error) error();
             }, false, {
               dataType: 'text',
               headers: headers,
@@ -262,7 +280,8 @@ function rezka2FillCookie(success, error) {
 
         if (success) success();
       }, function (a, c) {
-        if (success) success();
+        Lampa.Noty.show(network.errorDecode(a, c));
+        if (error) error();
       }, false, {
         dataType: 'text',
         headers: headers,

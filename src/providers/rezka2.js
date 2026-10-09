@@ -1,5 +1,6 @@
 function rezka2(component, _object) {
-  var network = new Lampa.Reguest();
+  var network = Utils.createRequest(component);
+  this.cancel = function () { network.clear(); };
   var extract = {};
   var object = _object;
   var select_title = '';
@@ -92,8 +93,8 @@ function rezka2(component, _object) {
 
     object = _object;
     select_title = object.search || object.movie.title;
-    if (this.wait_similars && data && data[0] && data[0].is_similars) return getPage(data[0].link);
     error_message = '';
+    if (this.wait_similars && data && data[0] && data[0].is_similars) return getPage(data[0].link);
     var search_date = object.search_date || !object.clarification && (object.movie.release_date || object.movie.first_air_date || object.movie.last_air_date) || '0000';
     var search_year = parseInt((search_date + '').slice(0, 4));
     var orig_titles = [];
@@ -703,7 +704,7 @@ function rezka2(component, _object) {
         } else error();
       } else error();
     }, function (a, c) {
-      error();
+      error(network.errorDecode(a, c));
     }, postdata, {
       withCredentials: logged_in,
       headers: headers
@@ -768,11 +769,11 @@ function rezka2(component, _object) {
 
         if (prefer_mp4) {
           links = item.links.filter(function (url) {
-            return /\.mp4(?:[?#]|$)/i.test(url);
+            return Utils.isMediaUrl(url, 'mp4');
           });
         } else {
           links = item.links.filter(function (url) {
-            return /\.m3u8(?:[?#]|$)/i.test(url);
+            return Utils.isMediaUrl(url, 'm3u8');
           });
         }
 

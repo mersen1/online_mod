@@ -1,0 +1,242 @@
+{
+  "checkedAt": "2026-10-09T21:33:42.972Z",
+  "scope": "Real search, movie-page and stream parsing for Interstellar from this workstation. Up to 4 KiB of media/manifest read; no video decoding, account authentication or physical TV playback. own-worker runs the repository worker locally and is not a deployed endpoint.",
+  "results": [
+    {
+      "provider": "rezka2",
+      "profile": "direct",
+      "requests": [
+        {
+          "host": "kvk.zone",
+          "status": 200,
+          "cors": "",
+          "challenge": false
+        },
+        {
+          "host": "kvk.zone",
+          "status": 200,
+          "cors": "",
+          "challenge": false
+        }
+      ],
+      "result": "source-error",
+      "reason": "online_mod_authorization_required HDrezka"
+    },
+    {
+      "provider": "rezka2",
+      "profile": "tv",
+      "requests": [
+        {
+          "host": "cors.nb557.workers.dev",
+          "status": 200,
+          "cors": "*",
+          "challenge": false
+        }
+      ],
+      "result": "no-player-url",
+      "reason": "No playable result for the selected title"
+    },
+    {
+      "provider": "kinogo",
+      "profile": "direct",
+      "requests": [
+        {
+          "host": "kinogo.is",
+          "status": 200,
+          "cors": "",
+          "challenge": false
+        },
+        {
+          "host": "kinogo.is",
+          "status": 200,
+          "cors": "",
+          "challenge": false
+        },
+        {
+          "host": "api.nextembed.ws",
+          "status": 200,
+          "cors": "https://lampa.mx",
+          "challenge": false
+        }
+      ],
+      "selected": true,
+      "result": "player-url-resolved",
+      "streamHost": "hye1eaipby4w.interkh.com",
+      "subtitles": 5,
+      "media": [
+        {
+          "transport": "browser-origin",
+          "status": 423,
+          "cors": "https://lampa.mx",
+          "hlsManifest": false,
+          "prefixAvailable": false,
+          "browserCorsAllowed": true
+        },
+        {
+          "transport": "native-no-origin",
+          "status": 200,
+          "cors": "*",
+          "hlsManifest": true,
+          "prefixAvailable": true
+        }
+      ]
+    },
+    {
+      "provider": "kinogo",
+      "profile": "tv",
+      "requests": [
+        {
+          "host": "cors.nb557.workers.dev",
+          "status": 404,
+          "cors": "*",
+          "challenge": false
+        }
+      ],
+      "result": "source-error",
+      "reason": "online_mod_proxy_source_unavailable"
+    },
+    {
+      "provider": "kinogo",
+      "profile": "own-worker",
+      "requests": [
+        {
+          "host": "local-worker.test",
+          "status": 200,
+          "cors": "*",
+          "challenge": false
+        },
+        {
+          "host": "local-worker.test",
+          "status": 200,
+          "cors": "*",
+          "challenge": false
+        },
+        {
+          "host": "api.nextembed.ws",
+          "status": 200,
+          "cors": "https://lampa.mx",
+          "challenge": false
+        }
+      ],
+      "selected": true,
+      "result": "player-url-resolved",
+      "streamHost": "hye1eaipby4w.interkh.com",
+      "subtitles": 5,
+      "media": [
+        {
+          "transport": "browser-origin",
+          "status": 423,
+          "cors": "https://lampa.mx",
+          "hlsManifest": false,
+          "prefixAvailable": false,
+          "browserCorsAllowed": true
+        },
+        {
+          "transport": "native-no-origin",
+          "status": 200,
+          "cors": "*",
+          "hlsManifest": true,
+          "prefixAvailable": true
+        }
+      ]
+    },
+    {
+      "provider": "rezka2",
+      "profile": "own-worker",
+      "requests": [
+        {
+          "host": "local-worker.test",
+          "status": 200,
+          "cors": "*",
+          "challenge": false
+        },
+        {
+          "host": "local-worker.test",
+          "status": 200,
+          "cors": "*",
+          "challenge": false
+        }
+      ],
+      "result": "source-error",
+      "reason": "online_mod_authorization_required HDrezka"
+    },
+    {
+      "provider": "filmix",
+      "profile": "tv",
+      "requests": [
+        {
+          "host": "cors.nb557.workers.dev",
+          "status": 200,
+          "cors": "*",
+          "challenge": false
+        },
+        {
+          "host": "cors.nb557.workers.dev",
+          "status": 200,
+          "cors": "*",
+          "challenge": false
+        }
+      ],
+      "selected": true,
+      "result": "player-url-resolved",
+      "streamHost": "chache08.werkecdn.me",
+      "subtitles": 0,
+      "media": [
+        {
+          "transport": "browser-origin",
+          "status": 200,
+          "cors": "*",
+          "hlsManifest": false,
+          "prefixAvailable": true,
+          "browserCorsAllowed": true
+        },
+        {
+          "transport": "native-no-origin",
+          "status": 200,
+          "cors": "*",
+          "hlsManifest": false,
+          "prefixAvailable": true
+        }
+      ]
+    },
+    {
+      "provider": "cdnvideohub",
+      "profile": "tv",
+      "requests": [
+        {
+          "host": "plapi.cdnvideohub.com",
+          "status": 200,
+          "cors": "https://lampa.mx",
+          "challenge": false
+        },
+        {
+          "host": "plapi.cdnvideohub.com",
+          "status": 200,
+          "cors": "https://lampa.mx",
+          "challenge": false
+        }
+      ],
+      "selected": true,
+      "result": "player-url-resolved",
+      "streamHost": "ok6-14.vkuser.net",
+      "subtitles": 0,
+      "media": [
+        {
+          "transport": "browser-origin",
+          "status": 400,
+          "cors": "",
+          "hlsManifest": false,
+          "prefixAvailable": false,
+          "browserCorsAllowed": false
+        },
+        {
+          "transport": "native-no-origin",
+          "status": 200,
+          "cors": "",
+          "hlsManifest": false,
+          "prefixAvailable": true
+        }
+      ]
+    }
+  ]
+}

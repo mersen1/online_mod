@@ -1,5 +1,6 @@
 function fancdn2(component, _object) {
-  var network = new Lampa.Reguest();
+  var network = Utils.createRequest(component);
+  this.cancel = function () { network.clear(); };
   var extract = [];
   var object = _object;
   var select_title = '';
@@ -261,7 +262,7 @@ function fancdn2(component, _object) {
 
     url = component.fixLinkProtocol(url, prefer_http, true);
 
-    if (endsWith(url, '.m3u8')) {
+    if (Utils.isMediaUrl(url, 'm3u8')) {
       getStreamM3U(element, call, error, url);
       return;
     }

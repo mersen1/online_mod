@@ -1,5 +1,6 @@
 function lumex(component, _object) {
-  var network = new Lampa.Reguest();
+  var network = Utils.createRequest(component);
+  this.cancel = function () { network.clear(); };
   var extract = {};
   var object = _object;
   extract.seasons = [];
@@ -486,7 +487,7 @@ function lumex(component, _object) {
       if (url) {
         element.subtitles = parseSubs(element.media.tracks);
 
-        if (endsWith(url, '.m3u8')) {
+        if (Utils.isMediaUrl(url, 'm3u8')) {
           getStreamM3U(element, call, error, url);
           return;
         }

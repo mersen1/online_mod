@@ -2,6 +2,10 @@
   "intro": "//20.09.2026 - Fix\n\n(function () {\n    'use strict';\n\n",
   "files": [
     {
+      "path": "vendor/json5.js",
+      "after": "\n"
+    },
+    {
       "path": "utils.js",
       "after": "\n"
     },
@@ -91,6 +95,10 @@
     },
     {
       "path": "providers/kinopub.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/kinogo.js",
       "after": "\n"
     },
     {

@@ -1,5 +1,6 @@
 function collaps(component, _object, prefer_dash) {
-  var network = new Lampa.Reguest();
+  var network = Utils.createRequest(component);
+  this.cancel = function () { network.clear(); };
   var extract = {};
   var object = _object;
   var select_title = '';
@@ -129,15 +130,36 @@ function collaps(component, _object, prefer_dash) {
     extract = null;
   };
 
+  this.loadEmbed = function (url, nextObject, title) {
+    object = nextObject;
+    select_title = title || object.movie.title;
+    var origin = Utils.parseURL(url).origin;
+    if (prox) {
+      prox_enc_stream = 'param/User-Agent=' + encodeURIComponent(user_agent) + '/';
+      prox_enc_stream += 'param/Origin=' + encodeURIComponent(origin) + '/';
+      prox_enc_stream += 'param/Referer=' + encodeURIComponent(origin + '/') + '/';
+    }
+    if (Lampa.Platform.is('android')) {
+      play_headers.Origin = origin;
+      play_headers.Referer = origin + '/';
+    }
+    network.clear();
+    network.timeout(10000);
+    network[net_method](component.proxyLink(url, prox, prox_enc, 'enc2t'), parse, function (a, c) {
+      component.empty(network.errorDecode(a, c));
+    }, false, { dataType: 'text', headers: play_headers });
+  };
+
+  this.loadMarkup = function (str, nextObject, title) {
+    object = nextObject;
+    select_title = title || object.movie.title;
+    parse(str);
+  };
+
   function parse(str) {
     component.loading(false);
-    str = (str || '').replace(/\n/g, '');
-    var find = str.match(/makePlayer\(({.*?})\);/);
-    var json;
-
-    try {
-      json = find && (0, eval)('"use strict"; (' + find[1] + ');');
-    } catch (e) {}
+    var find = (str || '').match(/makePlayer\(({[\s\S]*?})\);/);
+    var json = find && Utils.parsePlayerConfig(find[1]);
 
     if (json) {
       extract = json;
@@ -177,11 +199,15 @@ function collaps(component, _object, prefer_dash) {
     url = url || '';
 
     if (url && add) {
-      url += atob('JnZw');
+      url = Lampa.Utils.addUrlComponent(url, 'vp');
     }
 
-    url = component.fixLinkProtocol(url, prefer_http, true);
+    url = component.fixLinkProtocol(url, prefer_http, 'full');
     return url;
+  }
+
+  function streamLink(url) {
+    return prox ? component.proxyLink(url, prox, prox_enc_stream) : component.proxyStream(url, 'collaps');
   }
   /**
    * Отфильтровать файлы
@@ -223,12 +249,12 @@ function collaps(component, _object, prefer_dash) {
               info: audio_names.length ? ' / ' + component.uniqueNamesShortText(audio_names, 80) : '',
               season: season.season,
               episode: parseInt(episode.episode),
-              file: component.proxyLink(file, prox, prox_enc_stream),
+              file: streamLink(file),
               subtitles: episode.cc ? episode.cc.map(function (c) {
                 var url = fixUrl(c.url || '');
                 return {
                   label: c.name,
-                  url: component.processSubs(component.proxyLink(url, prox, prox_enc_stream))
+                  url: component.processSubs(streamLink(url))
                 };
               }) : false,
               audio_tracks: audio_tracks.length ? audio_tracks : false
@@ -268,12 +294,12 @@ function collaps(component, _object, prefer_dash) {
         title: extract.title || select_title,
         quality: max_quality ? max_quality + 'p' : '360p ~ ' + (prefer_dash ? '1080p' : '720p'),
         info: audio_names.length ? ' / ' + component.uniqueNamesShortText(audio_names, 80) : '',
-        file: component.proxyLink(file, prox, prox_enc_stream),
+        file: streamLink(file),
         subtitles: extract.source.cc ? extract.source.cc.map(function (c) {
           var url = fixUrl(c.url || '');
           return {
             label: c.name,
-            url: component.processSubs(component.proxyLink(url, prox, prox_enc_stream))
+            url: component.processSubs(streamLink(url))
           };
         }) : false,
         audio_tracks: audio_tracks.length ? audio_tracks : false

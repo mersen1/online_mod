@@ -84,20 +84,121 @@ function rezka2Host() {
 }
 
 function rezka2Mirror() {
-  var url = (Lampa.Storage.get('online_mod_rezka2_mirror', '') + '').trim();
-  if (!url) return 'https://kvk.zone';
-  if (startsWith(url, '//')) url = 'https:' + url;
-  if (url.indexOf('://') == -1) url = 'https://' + url;
-  url = url.replace(/\/+$/, '');
-  return url;
+  return normalizeHost(Lampa.Storage.get('online_mod_rezka2_mirror', ''), 'https://kvk.zone');
 }
 
 function kinobaseMirror() {
-  var url = Lampa.Storage.get('online_mod_kinobase_mirror', '') + '';
-  if (!url) return 'https://kinobase.org';
-  if (url.indexOf('://') == -1) url = 'https://' + url;
-  if (url.charAt(url.length - 1) === '/') url = url.substring(0, url.length - 1);
-  return url;
+  return normalizeHost(Lampa.Storage.get('online_mod_kinobase_mirror', ''), 'https://kinobase.org');
+}
+
+function normalizeHost(value, fallback) {
+  var url = (value || '').toString().trim();
+  if (!url) return fallback || '';
+  if (startsWith(url, '//')) url = 'https:' + url;
+  if (url.indexOf('://') === -1) url = 'https://' + url;
+  if (!/^https?:\/\/[^\s/?#]+(?:\/[^\s?#]*)?$/i.test(url)) return fallback || '';
+  return url.replace(/\/+$/, '');
+}
+
+function kinogoMirror() {
+  return normalizeHost(Lampa.Storage.get('online_mod_kinogo_mirror', ''), 'https://kinogo.is');
+}
+
+function isChallenge(value) {
+  if (value && typeof value === 'object' && typeof value.body === 'string') return isChallenge(value.body);
+  if (typeof value !== 'string') return false;
+  return /\bid\s*=\s*["'](?:anubis_challenge|cf-challenge-running|challenge-form)["']|\b(?:window\.)?_cf_chl_opt\b|\bcf-chl-(?:widget|managed|bypass)|<title[^>]*>\s*(?:Just a moment\.{0,3}|Attention Required!?\s*\|?\s*Cloudflare)/i.test(value) || /<form[^>]*\baction\s*=\s*["']\/check\?/i.test(value);
+}
+
+function createRequest(component) {
+  var network = new Lampa.Reguest();
+  var clear = network.clear;
+  var errorDecode = network.errorDecode;
+  var generation = 0;
+  var lastChallenge = false;
+  network.clear = function () {
+    generation++;
+    lastChallenge = false;
+    return clear.apply(network, arguments);
+  };
+  network.errorDecode = function (a, c) {
+    if (lastChallenge || a && (a.onlineChallenge || isChallenge(a.responseText))) return Lampa.Lang.translate('online_mod_source_challenge');
+    if (a && a.onlineParseError) return Lampa.Lang.translate('online_mod_source_response_error');
+    if (a && /^Malformed URL:/i.test(a.responseText || '')) return Lampa.Lang.translate('online_mod_proxy_source_unavailable');
+    return errorDecode.call(network, a, c);
+  };
+  ['native', 'silent', 'quiet'].forEach(function (method) {
+    var request = network[method];
+    if (!request) return;
+    network[method] = function (url, success, error, data, options) {
+      var current = generation;
+      var finished = false;
+      function fail(a, c) {
+        if (current !== generation || finished) return;
+        finished = true;
+        if (a && isChallenge(a.responseText)) a.onlineChallenge = true;
+        if (a && a.onlineChallenge) lastChallenge = true;
+        if (error) error(a, c);
+      }
+      return request.call(network, url, function (value) {
+        if (current !== generation || finished) return;
+        if (isChallenge(value)) return fail({ status: 403, statusText: 'challenge', responseText: '', onlineChallenge: true }, 'challenge');
+        try {
+          if (success) success(value);
+          finished = true;
+        } catch (e) {
+          // Do not leave the TV loader spinning after a changed response format.
+          if (current === generation) fail({ status: 502, statusText: 'parsererror', responseText: '', onlineParseError: true }, 'parsererror');
+          else if (component && component.empty) component.empty(Lampa.Lang.translate('online_mod_source_response_error'));
+        }
+      }, fail, data, options);
+    };
+  });
+  return network;
+}
+
+function isMediaUrl(url, extension) {
+  return typeof url === 'string' && new RegExp('\\.' + extension + '$', 'i').test(url.split(/[?#]/)[0]);
+}
+
+function parsePlayerConfig(str) {
+  // Parse top-level data fields separately: optional P2P callbacks are not data.
+  var result = {};
+  var depth = 0;
+  var quote = '';
+  var escaped = false;
+  var comment = '';
+  var start = 1;
+  var allowed = ['title', 'id', 'blocked', 'source', 'playlist', 'qualityByWidth'];
+  function field(end) {
+    try {
+      var data = JSON5.parse('{' + str.substring(start, end) + '}');
+      Object.keys(data).forEach(function (key) {
+        if (allowed.indexOf(key) !== -1) result[key] = data[key];
+      });
+    } catch (e) {}
+    start = end + 1;
+  }
+  for (var i = 0; i < str.length; i++) {
+    var ch = str.charAt(i);
+    var next = str.charAt(i + 1);
+    if (comment === '//') { if (ch === '\n' || ch === '\r') comment = ''; continue; }
+    if (comment === '/*') { if (ch === '*' && next === '/') { comment = ''; i++; } continue; }
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === quote) quote = '';
+      continue;
+    }
+    if (ch === '/' && (next === '/' || next === '*')) { comment = ch + next; i++; continue; }
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch === '{' || ch === '[' || ch === '(') depth++;
+    else if (ch === '}' || ch === ']' || ch === ')') {
+      if (depth === 1 && ch === '}') field(i);
+      depth--;
+    } else if (ch === ',' && depth === 1) field(i);
+  }
+  return result.source || result.playlist ? result : null;
 }
 
 function setCurrentFanserialsHost(host) {
@@ -188,7 +289,8 @@ function proxy(name) {
   }
 
   var proxy_other = Lampa.Storage.field('online_mod_proxy_other') === true;
-  var proxy_other_url = proxy_other ? Lampa.Storage.field('online_mod_proxy_other_url') + '' : '';
+  var proxy_other_url = proxy_other ? normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', '')) : '';
+  if (proxy_other_url) proxy_other_url += '/';
   var user_proxy1 = (proxy_other_url || proxy1) + param_ip;
   var user_proxy2 = (proxy_other_url || proxy2) + param_ip;
   var user_proxy3 = (proxy_other_url || proxy3) + param_ip;
@@ -203,13 +305,15 @@ function proxy(name) {
   if (name === 'ip') return proxy3;
 
   if (Lampa.Storage.field('online_mod_proxy_' + name) === true) {
+    if (proxy_other_url) return proxy_other_url + param_ip;
     if (name === 'iframe') return user_proxy2;
     if (name === 'lumex') return proxy_secret;
     if (name === 'rezka') return user_proxy2;
     if (name === 'rezka2') return user_proxy2;
-    if (name === 'kinobase') return proxy_secret;
-    if (name === 'collaps') return proxy_secret;
-    if (name === 'cdnmovies') return proxy_secret;
+    if (name === 'kinogo') return user_proxy2;
+    if (name === 'kinobase') return proxy_secret || user_proxy2;
+    if (name === 'collaps') return proxy_secret || user_proxy2;
+    if (name === 'cdnmovies') return proxy_secret || user_proxy2;
     if (name === 'filmix') return proxy_other && !proxy_other_url && proxy_secret_ip || user_proxy1;
     if (name === 'videodb') return user_proxy2;
     if (name === 'fancdn') return proxy_secret_ip;
@@ -219,7 +323,7 @@ function proxy(name) {
     if (name === 'videoseed') return proxy_secret;
     if (name === 'vibix') return proxy_secret;
     if (name === 'redheadsound') return user_proxy2;
-    if (name === 'cdnvideohub') return proxy_secret;
+    if (name === 'cdnvideohub') return proxy_secret || user_proxy2;
     if (name === 'anilibria') return user_proxy2;
     if (name === 'anilibria2') return user_proxy1;
     if (name === 'animelib') return proxy_secret;
@@ -401,6 +505,12 @@ function checkAndroidVersion(needVersion) {
 }
 
 var Utils = {
+  normalizeHost: normalizeHost,
+  kinogoMirror: kinogoMirror,
+  createRequest: createRequest,
+  isChallenge: isChallenge,
+  isMediaUrl: isMediaUrl,
+  parsePlayerConfig: parsePlayerConfig,
   decodeSecret: decodeSecret,
   isDebug: isDebug,
   isDebug2: isDebug2,

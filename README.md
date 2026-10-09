@@ -1,62 +1,75 @@
-# Online Mod — fork mersen1
+# Online Mod — mersen1 fork
 
-Форк [nb557/plugins](https://github.com/nb557/plugins) для развития плагина Lampa и интеграции с HDRezka. Исходная версия: `67bd818ed22702b3089aaf98ef5053c2a1a724a5`, 20.09.2026. История Git сохранена, оригинальный репозиторий подключён как `upstream`.
+A fork of [nb557/plugins](https://github.com/nb557/plugins) for Lampa, including HDRezka and Kinogo support. The upstream starting point is `67bd818ed22702b3089aaf98ef5053c2a1a724a5` (2026-09-20). Git history is preserved and the original repository is available as `upstream`.
 
-## Установка в Lampa
+## Installation
 
-Добавьте в настройках расширений:
+Add this URL in Lampa's extension settings, including Lampa MX launched through Media Station X:
 
 ```text
 https://mersen1.github.io/online_mod/online_mod.js
 ```
 
-Зеркало файла в репозитории:
+Repository mirror:
 
 ```text
 https://raw.githubusercontent.com/mersen1/online_mod/main/online_mod.js
 ```
 
-Чтобы различать версии, форк отображает версию `09.10.2026-mersen1.1`. При переходе с оригинала отключите его расширение: обе версии регистрируют один компонент `online_mod`.
+Current plugin version: `09.10.2026-mersen1.2`. The Pages URL stays the same across releases. Restart Lampa after an update and check the version in Online Mod settings. Disable the original extension when switching: both register the `online_mod` component.
 
-## Разработка
+## HDRezka and Kinogo on TVs
 
-Для разработки нужен Node.js 24 и pnpm 11.25.0. На устройстве с Lampa Node.js и сборка не нужны.
+HDRezka is the default source for a fresh installation; a saved source choice is preserved. Kinogo is available next to it. HDRezka defaults to `https://kvk.zone`; Kinogo defaults to `https://kinogo.is`. Both have ordinary mirror and proxy settings. Kinogo can retry the configured mirror and `.is`, `.online`, `.ec`, `.no` after challenges or connection/server errors; these mirrors do not necessarily have identical catalogs or players.
+
+Fresh non-Android installations enable metadata proxies for HDRezka, Kinogo and Filmix. Explicit user choices survive restarts. HDRezka login and cookie controls are available outside debug mode. With a proxy enabled, login collects a cookie through that proxy instead of relying on cross-origin browser cookies. Use a proxy you trust: login requests and account cookies pass through it.
+
+External access is not guaranteed. The latest workstation checks found:
+
+- HDRezka's configured mirror requires authorization for the tested movie. Public proxy search did not produce the requested title.
+- Public upstream proxies reject Kinogo metadata requests. A compatible custom proxy is needed for TV/browser access; direct Kinogo HTML does not allow Lampa's browser Origin through CORS.
+- Kinogo's supported NextEmbed player resolves HLS and subtitles. The stream returned HTTP 200 without Origin and HTTP 423 with `Origin: https://lampa.mx`. The existing stream-proxy option now also applies to Kinogo/Collaps, but relay availability is an external dependency.
+- Filmix returned an accessible MP4 prefix in the tested TV profile. CDNVideoHub media was accessible without Origin but rejected the browser-Origin request.
+
+Challenges produce a clear message and a remote-focusable source-switch action. The plugin does not solve interactive CAPTCHAs. See [review results](docs/REVIEW.md) for evidence and limitations. No physical Samsung Q7 or LG playback has been verified by the automated checks.
+
+## Development
+
+Development uses Node.js 24 and pnpm 11.25.0. Lampa devices need only the built plugin file.
 
 ```sh
-pnpm install --frozen-lockfile
+pnpm install --frozen-lockfile --ignore-scripts
 pnpm build
 pnpm check
 pnpm test
 ```
 
-Редактируйте `src/`, а затем запускайте `pnpm build`. Корневой `online_mod.js` — готовый файл для установки, он коммитится вместе с исходниками. CI проверяет, что он точно соответствует сборке, что клиентский код совместим с ES5 и что тесты проходят.
+Edit `src/`, then run `pnpm build`. Commit the generated root `online_mod.js` with its sources. CI checks exact bundle reproducibility, ES5 client syntax and the test suite.
 
-| Путь | Назначение |
+| Path | Purpose |
 | --- | --- |
-| `src/providers/` | 21 реализация балансеров, каждый в отдельном файле |
-| `src/utils.js` | Адреса, прокси, URL и общие утилиты |
-| `src/kinopoisk.js` | Поиск метаданных и кеш |
-| `src/component.js` | Компонент Lampa, список источников, фильтры и плейлисты |
-| `src/hdrezka-auth.js` | Вход, выход и получение cookie HDRezka |
-| `src/storage.js`, `src/lang.js`, `src/settings.js` | Настройки, значения по умолчанию и переводы |
-| `src/main.js`, `src/start.js` | Регистрация и запуск плагина |
-| `src/manifest.json` | Порядок модулей внутри единого замыкания |
-| `scripts/build.cjs` | Воспроизводимая сборка одного файла без runtime-зависимостей |
-| `test/` | Изолированные тесты реального кода балансеров и общих парсеров |
-| `docs/REVIEW.md` | Результаты первичной проверки и ограничения |
+| `src/providers/` | 22 provider implementations |
+| `src/utils.js` | Mirrors, proxies, request cancellation, challenge and player-data parsing |
+| `src/vendor/json5.js` | Bundled JSON5 2.2.3, with its MIT license |
+| `src/component.js` | Lampa source list, filters and playlists |
+| `src/hdrezka-auth.js` | HDRezka login, logout and cookie collection |
+| `src/storage.js`, `src/lang.js`, `src/settings.js` | Settings, defaults and localization |
+| `src/kinopoisk.js`, `src/main.js`, `src/start.js` | Metadata, registration and startup |
+| `src/manifest.json` | Module order inside one shared closure |
+| `test/` | Provider tests and jQuery/jsdom playback fixtures |
+| `docs/` | Review and bounded live-probe reports |
 
-Модули сохраняют общий контекст исходного плагина; это первое разделение исходников, а не переход на ES modules или изменение API Lampa. Сборка не добавляет `import`, сетевую загрузку модулей или современные конструкции в клиентский файл. Остальные плагины и серверные worker-файлы сохранены из upstream.
+[JSON5](https://json5.org/) handles JavaScript-style player data without executing optional P2P callbacks. Its ES5 browser build is bundled; no runtime package download is required. [jsdom](https://github.com/jsdom/jsdom) and jQuery are development-only dependencies for realistic DOM tests. Upstream provider modules still share the original closure; they are not ES modules. Other upstream plugins and worker files remain in the repository.
 
-## Публикация
-
-Workflow `Check and publish plugin` на `main` сначала выполняет проверки, затем публикует статические файлы из `dist/` через GitHub Pages. Исходники, тесты и инструменты разработки в артефакт Pages не входят. Ошибка проверки останавливает публикацию. Workflow Surge сохранён для upstream и не запускает деплой в этом форке.
-
-Для повторной проверки доступности сервисов:
+## Live probes and publication
 
 ```sh
 pnpm probe
+pnpm probe:playback
 ```
 
-Команда отправляет первые запросы поиска/метаданных с настройками по умолчанию и сохраняет `docs/provider-probe.json`. Она не проверяет вход в аккаунты или воспроизведение и не печатает URL с токенами.
+`probe` checks the first metadata request for all providers directly and with initialized MSX/Tizen defaults. `probe:playback` follows real parsers for selected sources and reads up to 4 KiB of a media prefix or manifest. Reports omit tokens, account credentials and signed URLs. The `own-worker` profile executes `cloudflare_worker.js` locally; it does not deploy or validate a hosted worker. Neither probe decodes video or emulates TV hardware.
 
-В исходном репозитории не найден файл LICENSE; новая лицензия этому форку не назначена.
+The `Check and publish plugin` workflow validates pushes to `main`, packages static files in `dist/` and deploys them to GitHub Pages. Failed checks stop publication. Sources and development dependencies are excluded from the Pages artifact. The Surge workflow runs only in upstream.
+
+No upstream LICENSE file was found. This fork does not assign a new license to upstream code; bundled JSON5 retains its own MIT notice.
