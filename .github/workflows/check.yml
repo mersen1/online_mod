@@ -1,0 +1,54 @@
+name: Check and publish plugin
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.25.0'
+      - name: Install development dependency
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Verify reproducible bundle and syntax
+        run: pnpm check
+      - name: Test providers
+        run: pnpm test
+      - name: Package static files
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'mersen1/online_mod'
+        run: pnpm package:pages
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'mersen1/online_mod'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && github.repository == 'mersen1/online_mod'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v5
+        id: deployment

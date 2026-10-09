@@ -1,0 +1,20 @@
+{
+  "name": "online-mod-fork",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "description": "Development checks for the mersen1 fork of nb557/plugins",
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "check": "node scripts/build.cjs --check && node scripts/check-syntax.cjs",
+    "test": "node --test test/*.test.cjs",
+    "probe": "node scripts/probe-providers.cjs",
+    "package:pages": "node scripts/package-pages.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "acorn": "8.19.0"
+  }
+}

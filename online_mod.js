@@ -1,3 +1,4 @@
+// Generated from src/ by scripts/build.cjs. Edit src/, then run pnpm build.
 //20.09.2026 - Fix
 
 (function () {
@@ -89,10 +90,11 @@
     }
 
     function rezka2Mirror() {
-      var url = Lampa.Storage.get('online_mod_rezka2_mirror', '') + '';
+      var url = (Lampa.Storage.get('online_mod_rezka2_mirror', '') + '').trim();
       if (!url) return 'https://kvk.zone';
+      if (startsWith(url, '//')) url = 'https:' + url;
       if (url.indexOf('://') == -1) url = 'https://' + url;
-      if (url.charAt(url.length - 1) === '/') url = url.substring(0, url.length - 1);
+      url = url.replace(/\/+$/, '');
       return url;
     }
 
@@ -1678,7 +1680,7 @@
 
         object = _object;
         select_title = object.search || object.movie.title;
-        if (this.wait_similars && data && data[0].is_similars) return getPage(data[0].link);
+        if (this.wait_similars && data && data[0] && data[0].is_similars) return getPage(data[0].link);
         error_message = '';
         var search_date = object.search_date || !object.clarification && (object.movie.release_date || object.movie.first_air_date || object.movie.last_air_date) || '0000';
         var search_year = parseInt((search_date + '').slice(0, 4));
@@ -1699,7 +1701,7 @@
           var url = more_url + '&q=' + encodeURIComponent(query) + '&page=' + encodeURIComponent(page);
           network.clear();
           network.timeout(10000);
-          network["native"](component.proxyLink(url, prox, prox_enc, prox_enc, 'enc2t'), function (str) {
+          network["native"](component.proxyLink(url, prox, prox_enc, 'enc2t'), function (str) {
             str = (str || '').replace(/\n/g, '');
             checkErrorForm(str);
             var links = str.match(/<div class="b-content__inline_item-link">\s*<a [^>]*>[^<]*<\/a>\s*<div>[^<]*<\/div>\s*<\/div>/g);
@@ -2103,7 +2105,7 @@
         var favs = str.match(/<input type="hidden" id="ctrl_favs" value="([^"]*)"/);
         if (favs) extract.favs = favs[1];
         var blocked = str.match(/class="b-player__restricted__block_message"/);
-        if (blocked) extract.blocked = true;
+        extract.blocked = !!blocked;
       }
 
       function getEpisodes(call) {
@@ -2354,11 +2356,11 @@
 
             if (prefer_mp4) {
               links = item.links.filter(function (url) {
-                return /\.mp4$/i.test(url);
+                return /\.mp4(?:[?#]|$)/i.test(url);
               });
             } else {
               links = item.links.filter(function (url) {
-                return /\.m3u8$/i.test(url);
+                return /\.m3u8(?:[?#]|$)/i.test(url);
               });
             }
 
@@ -2581,7 +2583,7 @@
 
         object = _object;
         select_title = object.search || object.movie.title;
-        if (this.wait_similars && data && data[0].is_similars) return getPage(data[0].link);
+        if (this.wait_similars && data && data[0] && data[0].is_similars) return getPage(data[0].link);
         var url = embed + 'search?query=' + encodeURIComponent(component.cleanTitle(select_title));
         var cookie = check_cookie;
         var headers = Lampa.Platform.is('android') ? {
@@ -4185,7 +4187,7 @@
 
         object = _object;
         select_title = object.search || object.movie.title;
-        if (this.wait_similars && data && data[0].is_similars) return find(data[0].id);
+        if (this.wait_similars && data && data[0] && data[0].is_similars) return find(data[0].id);
         var search_date = object.search_date || !object.clarification && (object.movie.release_date || object.movie.first_air_date || object.movie.last_air_date) || '0000';
         var search_year = parseInt((search_date + '').slice(0, 4));
         var orig_titles = [];
@@ -5195,7 +5197,7 @@
 
         object = _object;
         select_title = object.search || object.movie.title;
-        if (this.wait_similars && data && data[0].is_similars) return getPage(data[0].link);
+        if (this.wait_similars && data && data[0] && data[0].is_similars) return getPage(data[0].link);
         var search_date = object.search_date || !object.clarification && (object.movie.release_date || object.movie.first_air_date || object.movie.last_air_date) || '0000';
         var search_year = parseInt((search_date + '').slice(0, 4));
         var orig_titles = [];
@@ -8453,7 +8455,7 @@
 
         object = _object;
         select_title = object.search || object.movie.title;
-        if (this.wait_similars && data && data[0].is_similars) return getPage(data[0]);
+        if (this.wait_similars && data && data[0] && data[0].is_similars) return getPage(data[0]);
         var search_date = object.search_date || !object.clarification && (object.movie.release_date || object.movie.first_air_date || object.movie.last_air_date) || '0000';
         var search_year = parseInt((search_date + '').slice(0, 4));
         var orig_titles = [];
@@ -9271,7 +9273,7 @@
 
         object = _object;
         select_title = object.search || object.movie.title;
-        if (this.wait_similars && data && data[0].is_similars) return getRelease(data[0]);
+        if (this.wait_similars && data && data[0] && data[0].is_similars) return getRelease(data[0]);
         var search_year = object.search_date;
         var orig_titles = [];
 
@@ -9653,7 +9655,7 @@
 
         object = _object;
         select_title = object.search || object.movie.title;
-        if (this.wait_similars && data && data[0].is_similars) return getRelease(data[0]);
+        if (this.wait_similars && data && data[0] && data[0].is_similars) return getRelease(data[0]);
         var search_year = object.search_date;
         var orig_titles = [];
 
@@ -10056,7 +10058,7 @@
 
         object = _object;
         select_title = object.search || object.movie.title;
-        if (this.wait_similars && data && data[0].is_similars) return getEpisodes(data[0]);
+        if (this.wait_similars && data && data[0] && data[0].is_similars) return getEpisodes(data[0]);
         var search_year = object.search_date;
         var orig_titles = [];
 
@@ -10615,7 +10617,7 @@
 
         object = _object;
         select_title = object.search || object.movie.title;
-        if (this.wait_similars && data && data[0].is_similars) return success(data[0]);
+        if (this.wait_similars && data && data[0] && data[0].is_similars) return success(data[0]);
         var search_year = object.search_date;
         var orig_titles = [];
 
@@ -11280,7 +11282,7 @@
 
         object = _object;
         select_title = object.search || object.movie.title;
-        if (this.wait_similars && data && data[0].is_similars) return success(data[0]);
+        if (this.wait_similars && data && data[0] && data[0].is_similars) return success(data[0]);
         var search_date = object.search_date || !object.clarification && (object.movie.release_date || object.movie.first_air_date || object.movie.last_air_date) || '0000';
         var search_year = parseInt((search_date + '').slice(0, 4));
         var orig_titles = [];
@@ -13469,7 +13471,7 @@
       };
     }
 
-    var mod_version = '20.09.2026';
+    var mod_version = '09.10.2026-mersen1.1';
     var isMSX = !!(window.TVXHost || window.TVXManager);
     var isTizen = navigator.userAgent.toLowerCase().indexOf('tizen') !== -1;
     var isIFrame = window.parent !== window;

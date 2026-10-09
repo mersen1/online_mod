@@ -1,0 +1,8 @@
+online_mod.js -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+src/** text eol=lf
+scripts/** text eol=lf
+test/** text eol=lf
+docs/** text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf

@@ -1,0 +1,228 @@
+{
+  "checkedAt": "2026-10-09T20:54:10.092Z",
+  "scope": "Direct first metadata/search request from this workstation with default settings; no authentication, proxy, DOM or playback verification.",
+  "results": [
+    {
+      "provider": "lumex",
+      "host": "api.lumex.space",
+      "method": "GET",
+      "result": "network-error",
+      "error": "UND_ERR_CONNECT_TIMEOUT"
+    },
+    {
+      "provider": "lumex2",
+      "result": "no-request",
+      "note": "Requires configuration or source returned no request"
+    },
+    {
+      "provider": "rezka2",
+      "host": "kvk.zone",
+      "method": "POST",
+      "status": 200,
+      "finalHost": "kvk.zone",
+      "contentType": "text/html; charset=utf-8",
+      "cors": "",
+      "result": "http-ok",
+      "json": false
+    },
+    {
+      "provider": "kinobase",
+      "host": "kinobase.org",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "kinobase.org",
+      "contentType": "text/html; charset=UTF-8",
+      "cors": "",
+      "result": "http-ok",
+      "json": false
+    },
+    {
+      "provider": "collaps",
+      "host": "api.ortified.ws",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "api.ortified.ws",
+      "contentType": "text/html; charset=utf-8",
+      "cors": "*",
+      "result": "http-ok",
+      "json": false
+    },
+    {
+      "provider": "cdnmovies",
+      "host": "cdnmovies-stream.online",
+      "method": "GET",
+      "status": 403,
+      "finalHost": "cdnmovies-stream.online",
+      "contentType": "text/html; charset=UTF-8",
+      "cors": "",
+      "result": "challenge",
+      "json": false
+    },
+    {
+      "provider": "filmix",
+      "host": "filmixapp.cyou",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "filmixapp.cyou",
+      "contentType": "application/json;charset=utf-8",
+      "cors": "*",
+      "result": "http-ok",
+      "json": true,
+      "items": 3
+    },
+    {
+      "provider": "zetflix",
+      "host": "hidxlglk.deploy.cx",
+      "method": "GET",
+      "result": "network-error",
+      "error": "ENOTFOUND"
+    },
+    {
+      "provider": "fancdn",
+      "host": "1fanserials.org",
+      "method": "POST",
+      "status": 200,
+      "finalHost": "1fanserials.org",
+      "contentType": "text/html; charset=utf-8",
+      "cors": "",
+      "result": "http-ok",
+      "json": false
+    },
+    {
+      "provider": "fancdn2",
+      "host": "1fanserials.org",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "1fanserials.org",
+      "contentType": "application/json; charset=utf-8",
+      "cors": "",
+      "result": "api-error",
+      "json": true
+    },
+    {
+      "provider": "fanserials",
+      "host": "lomont.site",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "lomont.site",
+      "contentType": "text/html; charset=UTF-8",
+      "cors": "",
+      "result": "http-ok",
+      "json": false
+    },
+    {
+      "provider": "videoseed",
+      "host": "api.videoseed.tv",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "api.videoseed.tv",
+      "contentType": "application/json",
+      "cors": "",
+      "result": "api-error",
+      "json": true
+    },
+    {
+      "provider": "vibix",
+      "host": "vibix.org",
+      "method": "GET",
+      "status": 404,
+      "finalHost": "vibix.org",
+      "contentType": "text/html; charset=utf-8",
+      "cors": "",
+      "result": "http-error",
+      "json": false
+    },
+    {
+      "provider": "alloha",
+      "host": "api.apbugall.org",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "api.apbugall.org",
+      "contentType": "text/html; charset=UTF-8",
+      "cors": "*",
+      "result": "api-error",
+      "json": true
+    },
+    {
+      "provider": "redheadsound",
+      "host": "redheadsound.studio",
+      "method": "GET",
+      "status": 403,
+      "finalHost": "redheadsound.studio",
+      "contentType": "text/html; charset=UTF-8",
+      "cors": "",
+      "result": "http-error",
+      "json": false
+    },
+    {
+      "provider": "cdnvideohub",
+      "host": "plapi.cdnvideohub.com",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "plapi.cdnvideohub.com",
+      "contentType": "application/json; charset=utf-8",
+      "cors": "",
+      "result": "http-ok",
+      "json": true,
+      "items": 1
+    },
+    {
+      "provider": "anilibria",
+      "host": "api.anilibria.tv",
+      "method": "GET",
+      "status": 410,
+      "finalHost": "api.anilibria.tv",
+      "contentType": "application/octet-stream",
+      "cors": "",
+      "result": "api-error",
+      "json": true
+    },
+    {
+      "provider": "anilibria2",
+      "host": "api.anilibria.app",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "api.anilibria.app",
+      "contentType": "application/json",
+      "cors": "",
+      "result": "http-ok",
+      "json": true,
+      "items": 0
+    },
+    {
+      "provider": "animelib",
+      "host": "api2.mangalib.me",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "api2.mangalib.me",
+      "contentType": "application/json",
+      "cors": "",
+      "result": "http-ok",
+      "json": true,
+      "items": 0
+    },
+    {
+      "provider": "kodik",
+      "host": "kodik-api.com",
+      "method": "GET",
+      "status": 200,
+      "finalHost": "kodik-api.com",
+      "contentType": "application/json",
+      "cors": "*",
+      "result": "http-ok",
+      "json": true,
+      "items": 0
+    },
+    {
+      "provider": "kinopub",
+      "host": "api.srvkp.com",
+      "method": "GET",
+      "status": 401,
+      "finalHost": "api.srvkp.com",
+      "contentType": "application/json; charset=UTF-8",
+      "cors": "*",
+      "result": "api-error",
+      "json": true
+    }
+  ]
+}

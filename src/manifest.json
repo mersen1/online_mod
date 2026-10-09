@@ -1,0 +1,134 @@
+{
+  "intro": "//20.09.2026 - Fix\n\n(function () {\n    'use strict';\n\n",
+  "files": [
+    {
+      "path": "utils.js",
+      "after": "\n"
+    },
+    {
+      "path": "kinopoisk.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/lumex.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/lumex2.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/rezka2.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/kinobase.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/collaps.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/cdnmovies.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/filmix.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/zetflix.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/fancdn.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/fancdn2.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/fanserials.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/videoseed.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/vibix.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/alloha.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/redheadsound.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/cdnvideohub.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/anilibria.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/anilibria2.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/animelib.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/kodik.js",
+      "after": "\n"
+    },
+    {
+      "path": "providers/kinopub.js",
+      "after": "\n"
+    },
+    {
+      "path": "component.js",
+      "after": "\n"
+    },
+    {
+      "path": "storage.js",
+      "after": "\n"
+    },
+    {
+      "path": "lang.js",
+      "after": "\n"
+    },
+    {
+      "path": "main.js",
+      "after": "\n\n"
+    },
+    {
+      "path": "filmix-settings.js",
+      "after": "\n\n"
+    },
+    {
+      "path": "hdrezka-auth.js",
+      "after": "\n"
+    },
+    {
+      "path": "fancdn-auth.js",
+      "after": "\n\n"
+    },
+    {
+      "path": "settings.js",
+      "after": "\n"
+    },
+    {
+      "path": "start.js",
+      "after": "\n"
+    }
+  ],
+  "outro": "})();\n"
+}
