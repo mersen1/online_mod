@@ -1,4 +1,4 @@
-param([int]$Port = 8787)
+param([int]$Port = 8787, [switch]$Rebuild)
 $ErrorActionPreference = 'Stop'
 $projectDirectory = Split-Path -Parent $PSScriptRoot
 $stateDirectory = Join-Path $projectDirectory '.hdrezka-relay'
@@ -22,7 +22,10 @@ function Test-ProxyHealth([string]$Url) {
 $previousPort = $env:HDREZKA_RELAY_PORT
 try {
     $env:HDREZKA_RELAY_PORT = $Port.ToString()
-    & docker compose -f $composeFile up -d --build
+    & docker image inspect online-mod-hdrezka-proxy:latest 2>$null | Out-Null
+    $imageExists = $LASTEXITCODE -eq 0
+    if ($Rebuild -or -not $imageExists) { & docker compose -f $composeFile up -d --build }
+    else { & docker compose -f $composeFile up -d --no-build }
     if ($LASTEXITCODE -ne 0) { throw 'Docker Compose could not start the HDRezka proxy.' }
 } finally { $env:HDREZKA_RELAY_PORT = $previousPort }
 
@@ -46,6 +49,7 @@ $proxyUrl
 Затем Выйти → Войти в HDrezka.
 
 Во время просмотра должны работать компьютер и Docker Desktop.
+Контейнеры online-mod-hdrezka-proxy-1 и online-mod-hdrezka-tunnel-1 запускаются автоматически при старте Docker.
 Запуск: pwsh -File scripts/start-hdrezka-proxy.ps1
 Остановка: docker compose -f compose.hdrezka.yml down
 После перезапуска контейнера tunnel адрес может измениться; повторный запуск скрипта покажет текущий URL.

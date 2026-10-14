@@ -38,7 +38,7 @@ The private proxy and HTTPS tunnel run in Docker Compose. On Windows, start Dock
 pwsh -File scripts/start-hdrezka-proxy.ps1
 ```
 
-The launcher creates a private access token, builds the proxy, starts the two containers, checks HTTPS and writes the current URL and TV instructions to `.hdrezka-relay/TV-settings.txt`. Enter that complete URL in **Свой прокси для HDrezka**, set the mirror to `https://kvk.zone`, enable both HDRezka proxy toggles, and log out/in again. Keep the PC and Docker Desktop running during viewing.
+The launcher creates a private access token, builds the proxy if its image is missing, starts the two containers, checks HTTPS and writes the current URL and TV instructions to `.hdrezka-relay/TV-settings.txt`. Use `-Rebuild` after changing the proxy server code. Enter that complete URL in **Свой прокси для HDrezka**, set the mirror to `https://kvk.zone`, enable both HDRezka proxy toggles, and log out/in again. Keep the PC and Docker Desktop running during viewing. Both containers use `restart: always` and start when the Docker engine starts.
 
 The HTTPS URL uses a [Cloudflare Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/); its hostname changes when the tunnel starts again and it has no uptime guarantee. Re-running the launcher reuses running containers and shows their current URL. Stop them with:
 

@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: docker/hdrezka-proxy.Dockerfile
-    restart: unless-stopped
+    restart: always
     environment:
       HDREZKA_RELAY_BIND: 0.0.0.0
       HDREZKA_RELAY_TOKEN_FILE: /run/secrets/hdrezka_token
@@ -30,7 +30,7 @@ services:
   tunnel:
     image: cloudflare/cloudflared:2026.10.0
     command: [tunnel, --no-autoupdate, --url, "http://proxy:8787", --protocol, http2]
-    restart: unless-stopped
+    restart: always
     depends_on:
       proxy:
         condition: service_healthy
