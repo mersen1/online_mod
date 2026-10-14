@@ -1,4 +1,4 @@
-var mod_version = '10.10.2026-mersen1.4';
+var mod_version = '14.10.2026-mersen1.5';
 var isMSX = !!(window.TVXHost || window.TVXManager);
 var isTizen = navigator.userAgent.toLowerCase().indexOf('tizen') !== -1;
 var isIFrame = window.parent !== window;
@@ -78,6 +78,7 @@ function initStorage() {
   Lampa.Params.select('online_mod_kinobase_mirror', '', '');
   Lampa.Params.select('online_mod_kinobase_cookie', '', '');
   Lampa.Params.select('online_mod_rezka2_mirror', '', '');
+  Lampa.Params.select('online_mod_rezka2_proxy_url', '', '');
   Lampa.Params.select('online_mod_kinogo_mirror', '', '');
   Lampa.Params.select('online_mod_rezka2_name', '', '');
   Lampa.Params.select('online_mod_rezka2_password', '', '');

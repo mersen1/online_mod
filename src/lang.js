@@ -35,6 +35,10 @@ function initLang() {
       ru: 'Не удалось подтвердить сессию HDrezka. Проверьте зеркало и прокси, затем повторите вход в настройках Online Mod.',
       en: 'Could not verify the HDrezka session. Check the mirror and proxy, then log in again in Online Mod settings.'
     },
+    online_mod_rezka2_proxy_url: {
+      ru: 'Свой прокси для HDrezka',
+      en: 'Custom HDrezka proxy'
+    },
     online_mod_watch: {
       ru: 'Смотреть онлайн',
       uk: 'Дивитися онлайн',

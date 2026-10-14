@@ -16,7 +16,7 @@ Repository mirror:
 https://raw.githubusercontent.com/mersen1/online_mod/main/online_mod.js
 ```
 
-Current plugin version: `10.10.2026-mersen1.4`. The Pages URL stays the same across releases. Restart Lampa after an update and check the version in Online Mod settings. Disable the original extension when switching: both register the `online_mod` component.
+Current plugin version: `14.10.2026-mersen1.5`. The Pages URL stays the same across releases. Restart Lampa after an update and check the version in Online Mod settings. Disable the original extension when switching: both register the `online_mod` component.
 
 ## HDRezka and Kinogo on TVs
 
@@ -28,7 +28,29 @@ For HDRezka in Media Station X, enable both the HDRezka proxy and mirror-proxy s
 
 Version mersen1.4 preserves the complete login cookie, including `PHPSESSID`, checks that verification did not return another login form, and reads updated cookies even if the source was opened before login. Verified cookies are scoped to the selected mirror, and authenticated requests stay on their login proxy instead of rotating hourly. After upgrading from mersen1.3, log out and log in again in Online Mod settings to replace the incomplete session. The authenticated source does not retry on a different proxy IP; explicit custom-proxy choices remain in effect.
 
-External access is not guaranteed. The latest workstation checks found:
+### Private HDRezka proxy in Docker
+
+Version mersen1.5 adds **Свой прокси для HDrezka** to ordinary Online Mod settings. Its URL applies to HDRezka login, logout, search, pages and stream API requests while other sources keep their existing routes. An empty field keeps the existing public-proxy behavior. The **Проксировать HDrezka** toggle must be enabled; explicit proxy URLs are not silently replaced with another service.
+
+The private proxy and HTTPS tunnel run in Docker Compose. On Windows, start Docker Desktop, then run this from the repository directory with PowerShell 7:
+
+```powershell
+pwsh -File scripts/start-hdrezka-proxy.ps1
+```
+
+The launcher creates a private access token, builds the proxy, starts the two containers, checks HTTPS and writes the current URL and TV instructions to `.hdrezka-relay/TV-settings.txt`. Enter that complete URL in **Свой прокси для HDrezka**, set the mirror to `https://kvk.zone`, enable both HDRezka proxy toggles, and log out/in again. Keep the PC and Docker Desktop running during viewing.
+
+The HTTPS URL uses a [Cloudflare Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/); its hostname changes when the tunnel starts again and it has no uptime guarantee. Re-running the launcher reuses running containers and shows their current URL. Stop them with:
+
+```sh
+docker compose -f compose.hdrezka.yml down
+```
+
+The server only forwards requests to its configured HTTPS mirror and checks followed redirects before forwarding cookies. It exposes the existing worker protocol, including `cookie_plus`; account credentials and cookies are not stored or logged by the proxy. Token/state files are ignored by Git and excluded from Docker build contexts. Local access is bound to `127.0.0.1`; the public endpoint requires the private URL token. Mirror changes require updating `HDREZKA_RELAY_MIRROR` in `compose.hdrezka.yml` and the matching setting in the mod.
+
+The October 14 authenticated probe successfully opened Interstellar, Midsommar and Breaking Bad through the external HTTPS Docker route, including voices, seasons and episodes. Their tested stream responses require Premium and return a 60-second placeholder instead of the selected film. The proxy fixes metadata transport; it does not grant Premium access. See [the probe](docs/hdrezka-proxy-probe.json). Full-film playback on a physical television remains unverified.
+
+External access is not guaranteed. Earlier workstation checks found:
 
 - HDRezka's configured mirror requires authorization for the tested movie. Public proxy search did not produce the requested title.
 - Public upstream proxies reject Kinogo metadata requests. A compatible custom proxy is needed for TV/browser access; direct Kinogo HTML does not allow Lampa's browser Origin through CORS.
@@ -60,6 +82,8 @@ Edit `src/`, then run `pnpm build`. Commit the generated root `online_mod.js` wi
 | `src/storage.js`, `src/lang.js`, `src/settings.js` | Settings, defaults and localization |
 | `src/kinopoisk.js`, `src/main.js`, `src/start.js` | Metadata, registration and startup |
 | `src/manifest.json` | Module order inside one shared closure |
+| `compose.hdrezka.yml`, `docker/hdrezka-proxy.Dockerfile` | Private HDRezka proxy and HTTPS tunnel in Docker |
+| `scripts/start-hdrezka-proxy.ps1` | Start containers and show the URL for the mod setting |
 | `test/` | Provider tests and jQuery/jsdom playback fixtures |
 | `docs/` | Review and bounded live-probe reports |
 

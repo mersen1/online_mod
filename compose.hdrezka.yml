@@ -1,0 +1,41 @@
+name: online-mod-hdrezka
+services:
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/hdrezka-proxy.Dockerfile
+    restart: unless-stopped
+    environment:
+      HDREZKA_RELAY_BIND: 0.0.0.0
+      HDREZKA_RELAY_TOKEN_FILE: /run/secrets/hdrezka_token
+      HDREZKA_RELAY_MIRROR: https://kvk.zone
+    ports:
+      - "127.0.0.1:${HDREZKA_RELAY_PORT:-8787}:8787"
+    volumes:
+      - type: bind
+        source: ./.hdrezka-relay/token
+        target: /run/secrets/hdrezka_token
+        read_only: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 192m
+    pids_limit: 64
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/'+require('node:fs').readFileSync(process.env.HDREZKA_RELAY_TOKEN_FILE,'utf8').trim()+'/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.0
+    command: [tunnel, --no-autoupdate, --url, "http://proxy:8787", --protocol, http2]
+    restart: unless-stopped
+    depends_on:
+      proxy:
+        condition: service_healthy
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 192m
+    pids_limit: 64

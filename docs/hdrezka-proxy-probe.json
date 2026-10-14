@@ -1,0 +1,159 @@
+{
+  "checkedAt": "2026-10-14T20:51:30.340Z",
+  "version": "14.10.2026-mersen1.5",
+  "scope": "Authenticated HDRezka through a private proxy and external HTTPS tunnel, both running in Docker. Real provider parsers in MSX/Tizen fixtures. CORS checked with Origin https://lampa.mx. A bounded 64 KiB MP4 metadata read; no full-film playback, video decoding or physical TV verification. Credentials, cookies, signed media URLs and private endpoint tokens omitted.",
+  "login": {
+    "verified": true,
+    "requests": [
+      {
+        "path": "/ajax/login/",
+        "status": 200,
+        "browserCorsAllowed": true,
+        "challenge": false,
+        "authorizationRequired": false
+      },
+      {
+        "path": "/",
+        "status": 200,
+        "browserCorsAllowed": true,
+        "challenge": false,
+        "authorizationRequired": false
+      }
+    ]
+  },
+  "results": [
+    {
+      "title": "Интерстеллар",
+      "requests": [
+        {
+          "path": "/engine/ajax/search.php",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "path": "/films/fiction/2259-interstellar-2014.html",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "path": "/ajax/get_cdn_series/",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        }
+      ],
+      "isSeries": false,
+      "voices": 10,
+      "seasons": 0,
+      "episodes": 0,
+      "options": 10,
+      "result": [
+        {
+          "event": "notice",
+          "message": "Перевод доступен только с HDrezka Premium"
+        }
+      ],
+      "premiumFlag": 1
+    },
+    {
+      "title": "Солнцестояние",
+      "requests": [
+        {
+          "path": "/engine/ajax/search.php",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "path": "/films/drama/32010-solncestoyanie-2019.html",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "path": "/ajax/get_cdn_series/",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        }
+      ],
+      "isSeries": false,
+      "voices": 9,
+      "seasons": 0,
+      "episodes": 0,
+      "options": 9,
+      "result": [
+        {
+          "event": "notice",
+          "message": "Перевод доступен только с HDrezka Premium"
+        }
+      ],
+      "premiumFlag": 1
+    },
+    {
+      "title": "Во все тяжкие",
+      "requests": [
+        {
+          "path": "/engine/ajax/search.php",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "path": "/series/thriller/646-vo-vse-tyazhkie-2008-latest.html",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "path": "/ajax/get_cdn_series/",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        },
+        {
+          "path": "/ajax/get_cdn_series/",
+          "status": 200,
+          "browserCorsAllowed": true,
+          "challenge": false,
+          "authorizationRequired": false
+        }
+      ],
+      "isSeries": true,
+      "voices": 9,
+      "seasons": 5,
+      "episodes": 62,
+      "options": 7,
+      "result": [
+        {
+          "event": "notice",
+          "message": "Перевод доступен только с HDrezka Premium"
+        }
+      ],
+      "premiumFlag": 1
+    }
+  ],
+  "premiumPlaceholder": {
+    "status": 206,
+    "bytesRead": 65536,
+    "durationSeconds": 60.075,
+    "filmPlaybackConfirmed": false
+  },
+  "validation": {
+    "testsPassed": 118,
+    "es5": true,
+    "reproducibleBundle": true,
+    "testsRunInDocker": true
+  }
+}

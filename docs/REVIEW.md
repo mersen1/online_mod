@@ -2,6 +2,16 @@
 
 Target: Lampa MX inside Media Station X, including Samsung/Tizen and LG/WebOS. HDRezka and Kinogo are the user's priority sources. The checks run on a Windows workstation and do not certify hardware decoding or playback on every television.
 
+## Docker proxy follow-up — 2026-10-14, mersen1.5
+
+Public HDRezka workers returned random movie redirects, ending in HTTP 500/503 on authenticated page requests. A private worker-compatible proxy now runs in Docker on this PC, with a second Docker container providing an HTTPS tunnel. The published client accepts its URL through **Свой прокси для HDrezka**. No personal endpoint or account data is embedded in the plugin. The setting controls both login and provider requests, preserves other sources' routes, and prevents public fallback for an explicit URL.
+
+The relay retains the worker's encoded headers and `cookie_plus` response format. It is limited to the configured HTTPS mirror, verifies redirect origins before forwarding credentials, requires a private URL token, sanitizes worker errors, omits stale compression headers, and preserves HTTP 404 login forms so the client still reports authorization accurately. Its Windows launcher starts only Docker containers, reuses the existing deployment, and saves the current URL in an ignored local file. Quick Tunnel addresses can change when the tunnel restarts.
+
+All 118 tests and ES5/bundle checks passed inside Docker with frozen pnpm dependencies. The live probe in [hdrezka-proxy-probe.json](hdrezka-proxy-probe.json) verified account login, cookie retention, search, pages, voice lists and series season/episode data through the external HTTPS endpoint with Lampa's Origin. Every recorded metadata request returned HTTP 200 with browser CORS. Interstellar and Midsommar movie options and Breaking Bad series options were parsed by the real provider.
+
+The tested stream API replies still have `premium_content=1` and identical URLs for all quality labels. A bounded read of one MP4 header confirmed a 60.075-second placeholder. This is not successful film playback; the client correctly displays the Premium requirement. No account credentials, account-cookie values, signed stream URLs or private proxy tokens appear in the report. Physical television navigation and full media decoding remain unverified. Previous sections below describe earlier revisions.
+
 ## HDRezka connection follow-up — mersen1.3
 
 HDRezka's live-search error handler could silently persist `online_mod_proxy_rezka2=false` after HTTP 403. In MSX, the following direct request then fails browser CORS and appears as a network error. The handler now preserves the setting, tries the other built-in worker on connection/proxy/server failures, and keeps custom proxies as the sole route. Login/error pages stop retries; an HTTP 404 login page reports authorization rather than a network error. If live search returns unrelated results through a proxy, the plugin uses full-page search. Russian connection messages identify the two proxy switches needed for MSX.

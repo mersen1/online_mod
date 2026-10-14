@@ -19,7 +19,7 @@ test('HDRezka and Kinogo transport controls are available in ordinary MSX settin
     h.plugin.initSettings();
     const markup = h.events.find(([event, name]) => event === 'template' && name === 'settings_online_mod')[2];
     const page = h.$('<div></div>').append(h.$.parseHTML(markup));
-    for (const name of ['online_mod_proxy_rezka2', 'online_mod_proxy_rezka2_mirror', 'online_mod_rezka2_cookie', 'online_mod_rezka2_fill_cookie', 'online_mod_proxy_kinogo', 'online_mod_kinogo_mirror']) {
+    for (const name of ['online_mod_proxy_rezka2', 'online_mod_rezka2_proxy_url', 'online_mod_proxy_rezka2_mirror', 'online_mod_rezka2_cookie', 'online_mod_rezka2_fill_cookie', 'online_mod_proxy_kinogo', 'online_mod_kinogo_mirror']) {
       assert.equal(page.find(`[data-name="${name}"]`).length, 1, name);
     }
   } finally { h.close(); }

@@ -10,7 +10,7 @@ function rezka2(component, _object) {
   var prox = Utils.rezka2Proxy(component.proxy('rezka2'));
   var proxies = [prox];
   // Retry only the built-in proxies; keep a custom proxy and its cookies scoped.
-  if (!(Lampa.Storage.field('online_mod_proxy_other') === true && Utils.normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) && /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/.test(prox)) {
+  if (!Utils.normalizeHost(Lampa.Storage.get('online_mod_rezka2_proxy_url', '')) && !(Lampa.Storage.field('online_mod_proxy_other') === true && Utils.normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) && /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/.test(prox)) {
     proxies.push(prox.replace(/cors\.(nb557|fx666)\./, function (match, name) { return 'cors.' + (name === 'nb557' ? 'fx666' : 'nb557') + '.'; }));
   }
   var host = prox && !proxy_mirror ? Utils.rezka2Host() : Utils.rezka2Mirror();

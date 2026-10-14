@@ -102,6 +102,7 @@ function rezka2Proxy(preferred) {
   var saved = Lampa.Storage.get('online_mod_rezka2_cookie_proxy', '') + '';
   var host = rezka2AuthHost(preferred);
   if (!preferred || !saved || !rezka2Cookie(host) || Lampa.Storage.get('online_mod_rezka2_cookie_host', '') !== host) return preferred;
+  if (normalizeHost(Lampa.Storage.get('online_mod_rezka2_proxy_url', ''))) return preferred;
   if (Lampa.Storage.field('online_mod_proxy_other') === true && normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) return preferred;
   var builtin = /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/;
   // Keep authenticated requests on the egress used for login across hourly rotation.
@@ -316,6 +317,10 @@ function proxy(name) {
   var user_proxy1 = (proxy_other_url || proxy1) + param_ip;
   var user_proxy2 = (proxy_other_url || proxy2) + param_ip;
   var user_proxy3 = (proxy_other_url || proxy3) + param_ip;
+  if (name === 'rezka2' && Lampa.Storage.field('online_mod_proxy_rezka2') === true) {
+    var rezka_proxy = normalizeHost(Lampa.Storage.get('online_mod_rezka2_proxy_url', ''));
+    if (rezka_proxy) return rezka_proxy + '/' + param_ip;
+  }
   if (name === 'lumex_api') return user_proxy2;
   if (name === 'filmix_site') return proxy_other && !proxy_other_url && proxy_secret_ip || user_proxy1;
   if (name === 'filmix_abuse') return '';

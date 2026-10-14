@@ -1,0 +1,7 @@
+.git
+.hdrezka-relay
+.env
+.env.*
+node_modules
+dist
+coverage

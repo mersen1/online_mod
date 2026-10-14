@@ -142,6 +142,7 @@
       var saved = Lampa.Storage.get('online_mod_rezka2_cookie_proxy', '') + '';
       var host = rezka2AuthHost(preferred);
       if (!preferred || !saved || !rezka2Cookie(host) || Lampa.Storage.get('online_mod_rezka2_cookie_host', '') !== host) return preferred;
+      if (normalizeHost(Lampa.Storage.get('online_mod_rezka2_proxy_url', ''))) return preferred;
       if (Lampa.Storage.field('online_mod_proxy_other') === true && normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) return preferred;
       var builtin = /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/;
       // Keep authenticated requests on the egress used for login across hourly rotation.
@@ -356,6 +357,10 @@
       var user_proxy1 = (proxy_other_url || proxy1) + param_ip;
       var user_proxy2 = (proxy_other_url || proxy2) + param_ip;
       var user_proxy3 = (proxy_other_url || proxy3) + param_ip;
+      if (name === 'rezka2' && Lampa.Storage.field('online_mod_proxy_rezka2') === true) {
+        var rezka_proxy = normalizeHost(Lampa.Storage.get('online_mod_rezka2_proxy_url', ''));
+        if (rezka_proxy) return rezka_proxy + '/' + param_ip;
+      }
       if (name === 'lumex_api') return user_proxy2;
       if (name === 'filmix_site') return proxy_other && !proxy_other_url && proxy_secret_ip || user_proxy1;
       if (name === 'filmix_abuse') return '';
@@ -1769,7 +1774,7 @@
       var prox = Utils.rezka2Proxy(component.proxy('rezka2'));
       var proxies = [prox];
       // Retry only the built-in proxies; keep a custom proxy and its cookies scoped.
-      if (!(Lampa.Storage.field('online_mod_proxy_other') === true && Utils.normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) && /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/.test(prox)) {
+      if (!Utils.normalizeHost(Lampa.Storage.get('online_mod_rezka2_proxy_url', '')) && !(Lampa.Storage.field('online_mod_proxy_other') === true && Utils.normalizeHost(Lampa.Storage.get('online_mod_proxy_other_url', ''))) && /^https:\/\/cors\.(nb557|fx666)\.workers\.dev\/(?:ip[^/]*\/)?$/.test(prox)) {
         proxies.push(prox.replace(/cors\.(nb557|fx666)\./, function (match, name) { return 'cors.' + (name === 'nb557' ? 'fx666' : 'nb557') + '.'; }));
       }
       var host = prox && !proxy_mirror ? Utils.rezka2Host() : Utils.rezka2Mirror();
@@ -13805,7 +13810,7 @@
       };
     }
 
-    var mod_version = '10.10.2026-mersen1.4';
+    var mod_version = '14.10.2026-mersen1.5';
     var isMSX = !!(window.TVXHost || window.TVXManager);
     var isTizen = navigator.userAgent.toLowerCase().indexOf('tizen') !== -1;
     var isIFrame = window.parent !== window;
@@ -13885,6 +13890,7 @@
       Lampa.Params.select('online_mod_kinobase_mirror', '', '');
       Lampa.Params.select('online_mod_kinobase_cookie', '', '');
       Lampa.Params.select('online_mod_rezka2_mirror', '', '');
+      Lampa.Params.select('online_mod_rezka2_proxy_url', '', '');
       Lampa.Params.select('online_mod_kinogo_mirror', '', '');
       Lampa.Params.select('online_mod_rezka2_name', '', '');
       Lampa.Params.select('online_mod_rezka2_password', '', '');
@@ -13947,6 +13953,10 @@
         online_mod_rezka2_session_error: {
           ru: 'Не удалось подтвердить сессию HDrezka. Проверьте зеркало и прокси, затем повторите вход в настройках Online Mod.',
           en: 'Could not verify the HDrezka session. Check the mirror and proxy, then log in again in Online Mod settings.'
+        },
+        online_mod_rezka2_proxy_url: {
+          ru: 'Свой прокси для HDrezka',
+          en: 'Custom HDrezka proxy'
         },
         online_mod_watch: {
           ru: 'Смотреть онлайн',
@@ -15177,6 +15187,8 @@
 
     function initSettings() {
       var template = "<div>";
+
+      template += '<div class="settings-param selector" data-name="online_mod_rezka2_proxy_url" data-type="input" placeholder="#{settings_cub_not_specified}"><div class="settings-param__name">#{online_mod_rezka2_proxy_url}</div><div class="settings-param__value"></div></div>';
 
       template += "\n        <div class=\"settings-param selector\" data-name=\"online_mod_proxy_rezka2\" data-type=\"toggle\">\n            <div class=\"settings-param__name\">#{online_mod_proxy_balanser} HDrezka</div>\n            <div class=\"settings-param__value\"></div>\n        </div>";
       template += "\n        <div class=\"settings-param selector\" data-name=\"online_mod_proxy_kinogo\" data-type=\"toggle\"><div class=\"settings-param__name\">#{online_mod_proxy_balanser} Kinogo</div><div class=\"settings-param__value\"></div></div>";

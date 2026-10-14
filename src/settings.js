@@ -9,6 +9,8 @@ function addSettingsOnlineMod() {
 function initSettings() {
   var template = "<div>";
 
+  template += '<div class="settings-param selector" data-name="online_mod_rezka2_proxy_url" data-type="input" placeholder="#{settings_cub_not_specified}"><div class="settings-param__name">#{online_mod_rezka2_proxy_url}</div><div class="settings-param__value"></div></div>';
+
   template += "\n        <div class=\"settings-param selector\" data-name=\"online_mod_proxy_rezka2\" data-type=\"toggle\">\n            <div class=\"settings-param__name\">#{online_mod_proxy_balanser} HDrezka</div>\n            <div class=\"settings-param__value\"></div>\n        </div>";
   template += "\n        <div class=\"settings-param selector\" data-name=\"online_mod_proxy_kinogo\" data-type=\"toggle\"><div class=\"settings-param__name\">#{online_mod_proxy_balanser} Kinogo</div><div class=\"settings-param__value\"></div></div>";
   template += "\n        <div class=\"settings-param selector\" data-name=\"online_mod_kinogo_mirror\" data-type=\"input\"><div class=\"settings-param__name\">#{online_mod_kinogo_mirror}</div><div class=\"settings-param__value\"></div></div>";

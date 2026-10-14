@@ -10,6 +10,7 @@
     "test": "node --test test/*.test.cjs",
     "probe": "node scripts/probe-providers.cjs",
     "probe:playback": "node scripts/probe-playback.cjs",
+    "proxy:hdrezka": "pwsh -File scripts/start-hdrezka-proxy.ps1",
     "package:pages": "node scripts/package-pages.cjs"
   },
   "engines": {
