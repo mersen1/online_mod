@@ -8,13 +8,18 @@ services:
     environment:
       HDREZKA_RELAY_BIND: 0.0.0.0
       HDREZKA_RELAY_TOKEN_FILE: /run/secrets/hdrezka_token
-      HDREZKA_RELAY_MIRROR: https://kvk.zone
+      HDREZKA_RELAY_MIRROR: ${HDREZKA_RELAY_MIRROR:-https://kvk.zone}
+      HDREZKA_RELAY_CLEARANCE_FILE: /run/secrets/hdrezka_clearance
     ports:
       - "127.0.0.1:${HDREZKA_RELAY_PORT:-8787}:8787"
     volumes:
       - type: bind
         source: ./.hdrezka-relay/token
         target: /run/secrets/hdrezka_token
+        read_only: true
+      - type: bind
+        source: ./.hdrezka-relay/clearance.json
+        target: /run/secrets/hdrezka_clearance
         read_only: true
     read_only: true
     cap_drop: [ALL]

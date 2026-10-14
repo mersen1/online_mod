@@ -46,7 +46,25 @@ The HTTPS URL uses a [Cloudflare Quick Tunnel](https://developers.cloudflare.com
 docker compose -f compose.hdrezka.yml down
 ```
 
-The server only forwards requests to its configured HTTPS mirror and checks followed redirects before forwarding cookies. It exposes the existing worker protocol, including `cookie_plus`; account credentials and cookies are not stored or logged by the proxy. Token/state files are ignored by Git and excluded from Docker build contexts. Local access is bound to `127.0.0.1`; the public endpoint requires the private URL code and limits incorrect-code attempts per client. Mirror changes require updating `HDREZKA_RELAY_MIRROR` in `compose.hdrezka.yml` and the matching setting in the mod.
+The server only forwards requests to its configured HTTPS mirror and checks followed redirects before forwarding cookies. It exposes the existing worker protocol, including `cookie_plus`; account credentials and cookies are not stored or logged by the proxy. Token/state files are ignored by Git and excluded from Docker build contexts. Local access is bound to `127.0.0.1`; the public endpoint requires the private URL code and limits incorrect-code attempts per client. Change the mirror with the launcher's `-Mirror https://your-mirror` argument and set the same mirror in the mod.
+
+For a mirror that works in your browser after verification, the relay can reuse **your own verification cookies** without an HDRezka account. Complete the ordinary verification on the PC using the same Internet connection as Docker, then create the private `.hdrezka-relay/clearance.json` file:
+
+```json
+{
+  "origin": "https://rezka.ag",
+  "cookie": "techaro.lol-anubis-auth-XXXXXXXX=YOUR_COOKIE; techaro.lol-anubis-cookie-verification-XXXXXXXX=YOUR_COOKIE; _vc_id=YOUR_COOKIE",
+  "userAgent": "YOUR_BROWSER_USER_AGENT"
+}
+```
+
+Use the actual cookie names and User-Agent from your browser. Only Anubis verification cookies and `_vc_id`/`_vc_day` are accepted; exclude account cookies such as `dle_user_id`, `dle_password` and `PHPSESSID`. The file stays on the PC and is mounted read-only, never included in the Docker image or Git. The relay adds these cookies and the matching browser User-Agent only to its configured origin; it preserves anonymous session cookies from the mod. Anubis can bind its token to request metadata and expire it, so a working browser cookie does not guarantee it will work from Docker. See the [Anubis implementation](https://github.com/TecharoHQ/anubis/blob/v1.27.0/lib/anubis.go).
+
+```powershell
+pwsh -File scripts/start-hdrezka-proxy.ps1 -Mirror https://rezka.ag -Rebuild -ReloadClearance
+```
+
+Keep the private proxy URL on the TV, set **Зеркало для HDrezka** to the same mirror, enable both proxy toggles, clear **Куки для HDrezka**, reopen the film and use HDRezka without pressing login. The long verification cookie belongs in the PC file, not the TV settings. Subsequent launcher runs remember the mirror. After updating the verification cookie or User-Agent, run the launcher with `-ReloadClearance`; it restarts only the proxy, preserving the running tunnel URL. To disable browser clearance, replace the file contents with `{}` and reload it. The relay does not solve CAPTCHAs or generate verification tokens. Tests use a mocked upstream; physical TV playback with browser clearance must be verified separately.
 
 The October 14 authenticated probe successfully opened Interstellar, Midsommar and Breaking Bad through the external HTTPS Docker route, including voices, seasons and episodes. Their tested stream responses require Premium and return a 60-second placeholder instead of the selected film. The proxy fixes metadata transport; it does not grant Premium access. See [the probe](docs/hdrezka-proxy-probe.json). Full-film playback on a physical television remains unverified.
 

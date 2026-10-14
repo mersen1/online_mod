@@ -8,10 +8,44 @@ const { isIP } = require('node:net');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 
-function createRelay({ token, origin = 'https://kvk.zone', fetchImpl = fetch } = {}) {
+function parseCookies(value) {
+  const cookies = new Map();
+  for (const part of value.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator > 0) cookies.set(part.slice(0, separator).trim(), part.slice(separator + 1).trim());
+  }
+  return cookies;
+}
+
+function loadClearance(file) {
+  if (!file) return null;
+  try {
+    if (fs.statSync(file).size > 16384) throw new Error();
+    return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+  } catch {
+    // JSON diagnostics can contain the offending token. Never log them.
+    throw new Error('Invalid browser clearance file.');
+  }
+}
+
+function createRelay({ token, origin = 'https://kvk.zone', clearance = null, fetchImpl = fetch } = {}) {
   if (!/^(?:\d{8}|[a-zA-Z0-9_-]{24,128})$/.test(token || '')) throw new Error('An eight-digit code or a private token of at least 24 characters is required.');
   const allowed = new URL(origin);
   if (allowed.protocol !== 'https:' || allowed.username || allowed.password || allowed.port) throw new Error('The mirror must use HTTPS without a custom port.');
+  let browserCookies = null;
+  let browserUserAgent = '';
+  if (clearance !== null && (!clearance || typeof clearance !== 'object' || Array.isArray(clearance))) throw new Error('Invalid browser clearance configuration.');
+  if (clearance && Object.keys(clearance).length) {
+    let browserOrigin;
+    try { browserOrigin = new URL(clearance.origin); } catch { throw new Error('Invalid browser clearance origin.'); }
+    if (browserOrigin.origin !== allowed.origin || browserOrigin.username || browserOrigin.password || browserOrigin.pathname !== '/' || browserOrigin.search || browserOrigin.hash) throw new Error('Browser clearance must belong to the configured mirror.');
+    if (typeof clearance.cookie !== 'string' || !clearance.cookie || clearance.cookie.length > 16384 || /[\x00-\x1f\x7f]/.test(clearance.cookie)) throw new Error('Invalid browser clearance cookie.');
+    if (typeof clearance.userAgent !== 'string' || !clearance.userAgent.trim() || clearance.userAgent.length > 512 || /[\x00-\x1f\x7f]/.test(clearance.userAgent)) throw new Error('A valid browser User-Agent is required for clearance.');
+    browserCookies = parseCookies(clearance.cookie);
+    const permitted = /^(?:techaro\.lol-anubis-(?:auth|cookie-verification)(?:-[a-f0-9]{8})?|_vc_id|_vc_day)$/;
+    if (!browserCookies.size || [...browserCookies.keys()].some((name) => !permitted.test(name)) || ![...browserCookies.keys()].some((name) => /^techaro\.lol-anubis-auth(?:-|$)/.test(name))) throw new Error('Only browser verification cookies are accepted; exclude account cookies.');
+    browserUserAgent = clearance.userAgent;
+  }
   const expected = Buffer.from(token);
   const failures = new Map();
   const attemptWindow = 60000;
@@ -24,7 +58,14 @@ function createRelay({ token, origin = 'https://kvk.zone', fetchImpl = fetch } =
     for (let redirects = 0; redirects <= 5; redirects++) {
       const url = new URL(request.url);
       if (url.origin !== allowed.origin || url.username || url.password) throw new Error('Only the configured HDRezka mirror is allowed.');
-      const response = await fetchImpl(new Request(request.url, { method: request.method, headers: request.headers, body, signal }), { ...options, redirect: 'manual', signal });
+      const upstreamHeaders = new Headers(request.headers);
+      if (browserCookies) {
+        const cookies = parseCookies(upstreamHeaders.get('cookie') || '');
+        for (const [name, value] of browserCookies) cookies.set(name, value);
+        upstreamHeaders.set('cookie', [...cookies].map(([name, value]) => name + '=' + value).join('; '));
+        upstreamHeaders.set('user-agent', browserUserAgent);
+      }
+      const response = await fetchImpl(new Request(request.url, { method: request.method, headers: upstreamHeaders, body, signal }), { ...options, redirect: 'manual', signal });
       const location = response.headers.get('location');
       if (options.redirect === 'manual' || ![301, 302, 303, 307, 308].includes(response.status) || !location) return response;
       const next = new URL(location, url);
@@ -90,7 +131,7 @@ function createRelay({ token, origin = 'https://kvk.zone', fetchImpl = fetch } =
       const suffix = incoming.url.slice(prefix.length + 2);
       if (suffix === 'health') {
         outgoing.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
-        outgoing.end(JSON.stringify({ status: 'ready', mirror: allowed.origin }));
+        outgoing.end(JSON.stringify({ status: 'ready', mirror: allowed.origin, browserClearance: !!browserCookies }));
         return;
       }
       // Do not expose the worker's diagnostic endpoint, which echoes encoded cookies.
@@ -139,10 +180,10 @@ if (require.main === module) {
   const token = process.env.HDREZKA_RELAY_TOKEN || (fs.existsSync(tokenFile) ? fs.readFileSync(tokenFile, 'utf8').trim() : String(randomInt(10000000, 100000000)));
   if (!fs.existsSync(tokenFile)) fs.writeFileSync(tokenFile, token + '\n', { mode: 0o600 });
   const port = Number(process.env.HDREZKA_RELAY_PORT || 8787);
-  const server = createRelay({ token, origin: process.env.HDREZKA_RELAY_MIRROR || 'https://kvk.zone' });
+  const server = createRelay({ token, origin: process.env.HDREZKA_RELAY_MIRROR || 'https://kvk.zone', clearance: loadClearance(process.env.HDREZKA_RELAY_CLEARANCE_FILE) });
   const bind = process.env.HDREZKA_RELAY_BIND || '127.0.0.1';
   server.listen(port, bind, () => console.log(`HDRezka relay ready on ${bind}:${port}.`));
   server.on('error', (error) => { console.error('Relay start failed: ' + error.code); process.exitCode = 1; });
 }
 
-module.exports = { createRelay };
+module.exports = { createRelay, loadClearance };

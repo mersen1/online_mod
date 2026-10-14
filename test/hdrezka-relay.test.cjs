@@ -1,12 +1,15 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { once } = require('node:events');
-const { createRelay } = require('../scripts/hdrezka-relay.cjs');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { createRelay, loadClearance } = require('../scripts/hdrezka-relay.cjs');
 const { harness } = require('./helpers/plugin.cjs');
 const token = 'private-test-token-0123456789';
 
-async function relay(t, fetchImpl, accessCode = token) {
-  const server = createRelay({ token: accessCode, fetchImpl });
+async function relay(t, fetchImpl, accessCode = token, options = {}) {
+  const server = createRelay({ token: accessCode, fetchImpl, ...options });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); }));
@@ -15,6 +18,79 @@ async function relay(t, fetchImpl, accessCode = token) {
 function link(base, target, extra = '') {
   return base + 'enc2/' + encodeURIComponent(btoa(extra + target)) + '/page.txt?jacred.test';
 }
+
+const browserClearance = {
+  origin: 'https://rezka.ag',
+  cookie: 'techaro.lol-anubis-auth-d82da6a5=browser-fixture; techaro.lol-anubis-cookie-verification-d82da6a5=verified-fixture; _vc_id=visitor-fixture',
+  userAgent: 'Mozilla/5.0 BrowserFixture/1.0'
+};
+
+test('Browser verification cookies and User-Agent are applied to anonymous stream requests', async (t) => {
+  let calls = 0;
+  const base = await relay(t, async (request) => {
+    calls++;
+    assert.equal(request.url, 'https://rezka.ag/ajax/get_cdn_series/');
+    assert.equal(request.headers.get('user-agent'), browserClearance.userAgent);
+    assert.equal(request.method, 'POST');
+    assert.equal(await request.text(), 'id=123&action=get_movie');
+    assert.equal(request.headers.get('cookie'), 'PHPSESSID=anonymous; techaro.lol-anubis-auth-d82da6a5=browser-fixture; techaro.lol-anubis-cookie-verification-d82da6a5=verified-fixture; _vc_id=visitor-fixture');
+    assert.doesNotMatch(request.headers.get('cookie'), /dle_user_id|dle_password/);
+    return new Response('{"success":true,"url":"fixture"}', { headers: { 'Content-Type': 'application/json' } });
+  }, token, { origin: browserClearance.origin, clearance: browserClearance });
+  const extra = 'param/User-Agent=TVFixture/param/Cookie=' + encodeURIComponent('PHPSESSID=anonymous; techaro.lol-anubis-auth-d82da6a5=stale') + '/';
+  const response = await fetch(link(base, 'https://rezka.ag/ajax/get_cdn_series/', extra), { method: 'POST', body: 'id=123&action=get_movie' });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).success, true);
+  assert.equal(calls, 1);
+  const health = await (await fetch(base + 'health')).text();
+  assert.deepEqual(JSON.parse(health), { status: 'ready', mirror: browserClearance.origin, browserClearance: true });
+  assert.doesNotMatch(health, /browser-fixture|verified-fixture|visitor-fixture|BrowserFixture/);
+});
+
+test('Browser clearance is preserved across same-origin redirects and cannot leave its mirror', async (t) => {
+  const paths = [];
+  const base = await relay(t, async (request) => {
+    paths.push(new URL(request.url).pathname);
+    assert.equal(new URL(request.url).origin, browserClearance.origin);
+    assert.match(request.headers.get('cookie'), /techaro\.lol-anubis-auth-d82da6a5=browser-fixture/);
+    if (request.url.endsWith('/start')) return new Response(null, { status: 302, headers: { Location: '/finish' } });
+    return new Response(null, { status: 302, headers: { Location: 'https://elsewhere.example/' } });
+  }, token, { origin: browserClearance.origin, clearance: browserClearance });
+  assert.equal((await fetch(link(base, 'https://kvk.zone/'))).status, 502);
+  assert.deepEqual(paths, []);
+  assert.equal((await fetch(link(base, 'https://rezka.ag/start'))).status, 502);
+  assert.deepEqual(paths, ['/start', '/finish']);
+});
+
+test('Browser clearance rejects mismatched mirrors, account cookies and header injection', () => {
+  const options = { token, origin: browserClearance.origin, clearance: browserClearance };
+  assert.throws(() => createRelay({ ...options, origin: 'https://kvk.zone' }), /configured mirror/);
+  for (const clearance of [
+    { ...browserClearance, cookie: browserClearance.cookie + '; dle_user_id=private-account' },
+    { ...browserClearance, cookie: browserClearance.cookie + '\r\nInjected: private-token' },
+    { ...browserClearance, userAgent: '' },
+    { ...browserClearance, userAgent: 'Browser\nprivate-token' },
+    { ...browserClearance, origin: 'https://private-token@rezka.ag' },
+    []
+  ]) {
+    assert.throws(() => createRelay({ ...options, clearance }), (error) => !error.message.includes('private-token') && !error.message.includes('private-account'));
+  }
+  const disabled = createRelay({ token, clearance: {} });
+  disabled.close();
+});
+
+test('Clearance files accept a BOM and sanitize malformed secret-file diagnostics', (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'hdrezka-clearance-'));
+  const file = path.join(directory, 'clearance.json');
+  t.after(() => { fs.unlinkSync(file); fs.rmdirSync(directory); });
+  fs.writeFileSync(file, '\uFEFF' + JSON.stringify(browserClearance));
+  assert.deepEqual(loadClearance(file), browserClearance);
+  assert.equal(loadClearance(), null);
+  for (const content of ['{"cookie":"private-invalid-token', 'x'.repeat(16385)]) {
+    fs.writeFileSync(file, content);
+    assert.throws(() => loadClearance(file), { message: 'Invalid browser clearance file.' });
+  }
+});
 
 test('Eight-digit TV codes work and incorrect-code retries are bounded', async (t) => {
   const code = '12345678';
