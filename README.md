@@ -32,21 +32,27 @@ Version mersen1.4 preserves the complete login cookie, including `PHPSESSID`, ch
 
 Version mersen1.5 adds **Свой прокси для HDrezka** to ordinary Online Mod settings. Its URL applies to HDRezka login, logout, search, pages and stream API requests while other sources keep their existing routes. An empty field keeps the existing public-proxy behavior. The **Проксировать HDrezka** toggle must be enabled; explicit proxy URLs are not silently replaced with another service.
 
-The private proxy and HTTPS tunnel run in Docker Compose. On Windows, start Docker Desktop, then run this from the repository directory with PowerShell 7:
+The private proxy runs in Docker Compose and listens on the PC's private IPv4 address for the TV's local network. No public tunnel is started. On Windows, start Docker Desktop, then run this from the repository directory with PowerShell 7:
 
 ```powershell
 pwsh -File scripts/start-hdrezka-proxy.ps1
 ```
 
-The launcher creates an eight-digit access code for easy TV entry, builds the proxy if its image is missing, starts the two containers, checks HTTPS and writes the current URL and TV instructions to `.hdrezka-relay/TV-settings.txt`. Existing longer tokens remain supported; use `-Rebuild -ShortenKey` to replace one with a numeric code. Use `-Rebuild` after changing the proxy server code. Enter that complete URL in **Свой прокси для HDrezka**, set the mirror to `https://kvk.zone`, enable both HDRezka proxy toggles, and log out/in again. Keep the PC and Docker Desktop running during viewing. Both containers use `restart: always` and start when the Docker engine starts.
+The launcher selects the private IPv4 address of the adapter with a default gateway, creates an eight-digit access code for easy TV entry, builds the proxy if its image is missing, checks its LAN address and writes the URL and TV instructions to `.hdrezka-relay/TV-settings.txt`. Use `-LocalAddress 192.168.1.15` to choose the TV network explicitly when multiple adapters qualify. Existing longer tokens remain supported; use `-ShortenKey` to replace one with a numeric code. Use `-Rebuild` after changing the proxy server code. Enter the complete local URL in **Свой прокси для HDrezka**, set the configured mirror in the mod and enable both HDRezka proxy toggles. Keep the PC and Docker Desktop running during viewing. Only `online-mod-hdrezka-proxy-1` is needed; it uses `restart: always` and starts when Docker starts.
 
-The HTTPS URL uses a [Cloudflare Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/); its hostname changes when the tunnel starts again and it has no uptime guarantee. Re-running the launcher reuses running containers and shows their current URL. Stop them with:
+The URL is `http://PC_LAN_IP:8787/ACCESS_CODE/` and stays the same across Docker restarts while the PC keeps its address. Reserve that address for the PC in the router's DHCP settings for a stable LAN URL. The launcher remembers the mirror, removes obsolete Compose containers and does not create an Internet tunnel. Allow TCP 8787 from the local subnet using the helper once in an Administrator PowerShell:
+
+```powershell
+pwsh -File scripts/allow-hdrezka-lan.ps1 -LocalAddress 192.168.1.15 -Port 8787
+```
+
+The firewall rule is limited to the specified PC address, adapter, TCP port and `LocalSubnet`; it does not change the network's Public/Private category. HTTP access from an HTTPS-hosted Lampa may be blocked by the device before it reaches the relay; check the local endpoint on the physical TV. Stop the proxy with:
 
 ```sh
 docker compose -f compose.hdrezka.yml down
 ```
 
-The server only forwards requests to its configured HTTPS mirror and checks followed redirects before forwarding cookies. It exposes the existing worker protocol, including `cookie_plus`; account credentials and cookies are not stored or logged by the proxy. Token/state files are ignored by Git and excluded from Docker build contexts. Local access is bound to `127.0.0.1`; the public endpoint requires the private URL code and limits incorrect-code attempts per client. Change the mirror with the launcher's `-Mirror https://your-mirror` argument and set the same mirror in the mod.
+The server only forwards requests to its configured HTTPS mirror and checks followed redirects before forwarding cookies. It exposes the existing worker protocol, including `cookie_plus`; account credentials and cookies are not stored or logged by the proxy. Token/state files are ignored by Git and excluded from Docker build contexts. The launcher binds the host port to the selected private IPv4 address; direct Compose use defaults to loopback. The LAN endpoint requires the private URL code and limits incorrect-code attempts per client. Change the mirror with the launcher's `-Mirror https://your-mirror` argument and set the same mirror in the mod.
 
 For a mirror that works in your browser after verification, the relay can reuse **your own verification cookies** without an HDRezka account. Complete the ordinary verification on the PC using the same Internet connection as Docker, then create the private `.hdrezka-relay/clearance.json` file:
 
@@ -64,7 +70,7 @@ Use the actual cookie names and User-Agent from your browser. Only Anubis verifi
 pwsh -File scripts/start-hdrezka-proxy.ps1 -Mirror https://rezka.ag -Rebuild -ReloadClearance
 ```
 
-Keep the private proxy URL on the TV, set **Зеркало для HDrezka** to the same mirror, enable both proxy toggles, clear **Куки для HDrezka**, reopen the film and use HDRezka without pressing login. The long verification cookie belongs in the PC file, not the TV settings. Subsequent launcher runs remember the mirror. After updating the verification cookie or User-Agent, run the launcher with `-ReloadClearance`; it restarts only the proxy, preserving the running tunnel URL. To disable browser clearance, replace the file contents with `{}` and reload it. The relay does not solve CAPTCHAs or generate verification tokens. Tests use a mocked upstream; physical TV playback with browser clearance must be verified separately.
+Set the LAN proxy URL on the TV, set **Зеркало для HDrezka** to the same mirror, enable both proxy toggles, clear **Куки для HDrezka**, reopen the film and use HDRezka without pressing login. The long verification cookie belongs in the PC file, not the TV settings. Subsequent launcher runs remember the mirror. After updating the verification cookie or User-Agent, run the launcher with `-ReloadClearance`; it restarts the proxy with the same local URL. To disable browser clearance, replace the file contents with `{}` and reload it. The relay does not solve CAPTCHAs or generate verification tokens. Tests use a mocked upstream; physical TV playback with browser clearance must be verified separately.
 
 The October 14 authenticated probe successfully opened Interstellar, Midsommar and Breaking Bad through the external HTTPS Docker route, including voices, seasons and episodes. Their tested stream responses require Premium and return a 60-second placeholder instead of the selected film. The proxy fixes metadata transport; it does not grant Premium access. See [the probe](docs/hdrezka-proxy-probe.json). Full-film playback on a physical television remains unverified.
 

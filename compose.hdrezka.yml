@@ -11,7 +11,7 @@ services:
       HDREZKA_RELAY_MIRROR: ${HDREZKA_RELAY_MIRROR:-https://kvk.zone}
       HDREZKA_RELAY_CLEARANCE_FILE: /run/secrets/hdrezka_clearance
     ports:
-      - "127.0.0.1:${HDREZKA_RELAY_PORT:-8787}:8787"
+      - "${HDREZKA_RELAY_HOST:-127.0.0.1}:${HDREZKA_RELAY_PORT:-8787}:8787"
     volumes:
       - type: bind
         source: ./.hdrezka-relay/token
@@ -32,15 +32,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-  tunnel:
-    image: cloudflare/cloudflared:2026.10.0
-    command: [tunnel, --no-autoupdate, --url, "http://proxy:8787", --protocol, http2]
-    restart: always
-    depends_on:
-      proxy:
-        condition: service_healthy
-    read_only: true
-    cap_drop: [ALL]
-    security_opt: [no-new-privileges:true]
-    mem_limit: 192m
-    pids_limit: 64

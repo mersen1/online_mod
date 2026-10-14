@@ -1,4 +1,4 @@
-param([int]$Port = 8787, [string]$Mirror = '', [switch]$Rebuild, [switch]$ShortenKey, [switch]$ReloadClearance)
+param([ValidateRange(1024, 65535)][int]$Port = 8787, [string]$LocalAddress = '', [string]$Mirror = '', [switch]$Rebuild, [switch]$ShortenKey, [switch]$ReloadClearance)
 $ErrorActionPreference = 'Stop'
 $projectDirectory = Split-Path -Parent $PSScriptRoot
 $stateDirectory = Join-Path $projectDirectory '.hdrezka-relay'
@@ -9,14 +9,30 @@ $composeFile = Join-Path $projectDirectory 'compose.hdrezka.yml'
 Get-Command docker -ErrorAction Stop | Out-Null
 New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
 if (-not (Test-Path -LiteralPath $clearanceFile)) { Set-Content -LiteralPath $clearanceFile -Value '{}' -Encoding utf8 }
-if (-not $Mirror) {
-    $savedState = if (Test-Path -LiteralPath $stateFile) { Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json } else { $null }
-    $Mirror = if ($savedState -and $savedState.mirror) { $savedState.mirror } else { 'https://kvk.zone' }
+$savedState = if (Test-Path -LiteralPath $stateFile) { Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json } else { $null }
+
+function Test-PrivateIPv4([string]$Address) {
+    $parsedAddress = $null
+    if (-not [Net.IPAddress]::TryParse($Address, [ref]$parsedAddress) -or $parsedAddress.AddressFamily -ne [Net.Sockets.AddressFamily]::InterNetwork) { return $false }
+    $bytes = $parsedAddress.GetAddressBytes()
+    return $bytes[0] -eq 10 -or ($bytes[0] -eq 172 -and $bytes[1] -ge 16 -and $bytes[1] -le 31) -or ($bytes[0] -eq 192 -and $bytes[1] -eq 168)
 }
+if (-not $LocalAddress) {
+    $candidates = @(foreach ($configuration in Get-NetIPConfiguration) {
+        if ($configuration.IPv4DefaultGateway) {
+            foreach ($address in $configuration.IPv4Address) {
+                if (Test-PrivateIPv4 $address.IPAddress) { $address.IPAddress }
+            }
+        }
+    })
+    if ($savedState -and $savedState.localAddress -and $candidates -contains $savedState.localAddress) { $LocalAddress = $savedState.localAddress }
+    elseif ($candidates.Count -eq 1) { $LocalAddress = $candidates[0] }
+    else { throw 'Specify -LocalAddress with the private IPv4 address of the PC on the TV network.' }
+}
+if (-not (Test-PrivateIPv4 $LocalAddress) -or -not (Get-NetIPAddress -AddressFamily IPv4 | Where-Object IPAddress -eq $LocalAddress)) { throw 'LocalAddress must be a private IPv4 address assigned to this PC.' }
+if (-not $Mirror) { $Mirror = if ($savedState -and $savedState.mirror) { $savedState.mirror } else { 'https://kvk.zone' } }
 $mirrorUri = $null
-if (-not [Uri]::TryCreate($Mirror, [UriKind]::Absolute, [ref]$mirrorUri) -or $mirrorUri.Scheme -ne 'https' -or $mirrorUri.UserInfo -or -not $mirrorUri.IsDefaultPort -or $mirrorUri.AbsolutePath -ne '/' -or $mirrorUri.Query -or $mirrorUri.Fragment) {
-    throw 'Mirror must be an HTTPS origin without credentials, a custom port or a path.'
-}
+if (-not [Uri]::TryCreate($Mirror, [UriKind]::Absolute, [ref]$mirrorUri) -or $mirrorUri.Scheme -ne 'https' -or $mirrorUri.UserInfo -or -not $mirrorUri.IsDefaultPort -or $mirrorUri.AbsolutePath -ne '/' -or $mirrorUri.Query -or $mirrorUri.Fragment) { throw 'Mirror must be an HTTPS origin without credentials, a custom port or a path.' }
 $Mirror = $mirrorUri.GetLeftPart([UriPartial]::Authority)
 $clearanceEnabled = $false
 try {
@@ -33,44 +49,34 @@ function Test-ProxyHealth([string]$Url) {
     try {
         $health = Invoke-RestMethod -Uri ($Url.TrimEnd('/') + '/health') -TimeoutSec 5
         return $health.status -eq 'ready' -and $health.mirror -eq $Mirror -and [bool]$health.browserClearance -eq $clearanceEnabled
-    }
-    catch { return $false }
+    } catch { return $false }
 }
-
 $previousPort = $env:HDREZKA_RELAY_PORT
 $previousMirror = $env:HDREZKA_RELAY_MIRROR
+$previousHost = $env:HDREZKA_RELAY_HOST
 try {
     $env:HDREZKA_RELAY_PORT = $Port.ToString()
     $env:HDREZKA_RELAY_MIRROR = $Mirror
+    $env:HDREZKA_RELAY_HOST = $LocalAddress
     & docker image inspect online-mod-hdrezka-proxy:latest 2>$null | Out-Null
     $imageExists = $LASTEXITCODE -eq 0
-    if ($ShortenKey -or $ReloadClearance) {
-        # Access codes and clearance are read at startup. Recreate only the
-        # proxy so the tunnel keeps its current HTTPS hostname.
-        if ($Rebuild -or -not $imageExists) { & docker compose -f $composeFile up -d --build --force-recreate --no-deps proxy }
-        else { & docker compose -f $composeFile up -d --no-build --force-recreate --no-deps proxy }
-        if ($LASTEXITCODE -ne 0) { throw 'Docker could not activate the updated proxy settings.' }
-        & docker compose -f $composeFile up -d --no-build
-    } elseif ($Rebuild -or -not $imageExists) { & docker compose -f $composeFile up -d --build }
-    else { & docker compose -f $composeFile up -d --no-build }
+    # Always select the proxy explicitly; a public tunnel is never started.
+    if ($Rebuild -or -not $imageExists) {
+        if ($ShortenKey -or $ReloadClearance) { & docker compose -f $composeFile up -d --build --force-recreate --remove-orphans proxy }
+        else { & docker compose -f $composeFile up -d --build --remove-orphans proxy }
+    } else {
+        if ($ShortenKey -or $ReloadClearance) { & docker compose -f $composeFile up -d --no-build --force-recreate --remove-orphans proxy }
+        else { & docker compose -f $composeFile up -d --no-build --remove-orphans proxy }
+    }
     if ($LASTEXITCODE -ne 0) { throw 'Docker Compose could not start the HDRezka proxy.' }
-} finally { $env:HDREZKA_RELAY_PORT = $previousPort; $env:HDREZKA_RELAY_MIRROR = $previousMirror }
-
-$tunnelId = (& docker compose -f $composeFile ps -q tunnel) -join ''
-if ($LASTEXITCODE -ne 0 -or -not $tunnelId) { throw 'Docker tunnel container is unavailable.' }
-$tunnelStartedAt = (& docker inspect --format '{{.State.StartedAt}}' $tunnelId) -join ''
-if ($LASTEXITCODE -ne 0 -or -not $tunnelStartedAt) { throw 'Docker tunnel start time is unavailable.' }
-$tunnelUrl = $null
-for ($attempt = 0; $attempt -lt 60; $attempt++) {
-    # Ignore hostnames from earlier starts of this same container.
-    $logText = (& docker compose -f $composeFile logs --no-color --since $tunnelStartedAt --tail 120 tunnel 2>&1) -join "`n"
-    $matchesForUrl = [regex]::Matches($logText, 'https://[a-z0-9-]+\.trycloudflare\.com')
-    if ($matchesForUrl.Count -gt 0) { $tunnelUrl = $matchesForUrl[$matchesForUrl.Count - 1].Value; break }
-    Start-Sleep -Seconds 1
+} finally {
+    $env:HDREZKA_RELAY_PORT = $previousPort
+    $env:HDREZKA_RELAY_MIRROR = $previousMirror
+    $env:HDREZKA_RELAY_HOST = $previousHost
 }
-if (-not $tunnelUrl) { throw 'The Docker tunnel did not return an HTTPS URL. Inspect docker compose logs tunnel.' }
-$proxyUrl = $tunnelUrl + '/' + $privateToken + '/'
-@{ proxyUrl = $proxyUrl; composeFile = $composeFile; port = $Port; mirror = $Mirror; browserClearance = $clearanceEnabled } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding utf8
+
+$proxyUrl = 'http://' + $LocalAddress + ':' + $Port + '/' + $privateToken + '/'
+@{ proxyUrl = $proxyUrl; composeFile = $composeFile; port = $Port; mirror = $Mirror; browserClearance = $clearanceEnabled; localAddress = $LocalAddress; transport = 'lan' } | ConvertTo-Json | Set-Content -LiteralPath $stateFile -Encoding utf8
 $authInstructions = if ($clearanceEnabled) { 'Без входа в HDrezka: очистите поле «Куки для HDrezka», затем заново откройте фильм. Кука проверки хранится в Docker-прокси; вводить её на телевизоре не нужно.' } else { 'Затем Выйти → Войти в HDrezka.' }
 $instructions = @"
 Настройки → Online Mod → Свой прокси для HDrezka:
@@ -81,20 +87,23 @@ $proxyUrl
 Проксировать зеркало HDrezka: включено
 $authInstructions
 
+Прокси доступен по локальной сети; Cloudflare-туннель не используется.
 Во время просмотра должны работать компьютер и Docker Desktop.
-Контейнеры online-mod-hdrezka-proxy-1 и online-mod-hdrezka-tunnel-1 запускаются автоматически при старте Docker.
+Нужен только контейнер online-mod-hdrezka-proxy-1; он запускается автоматически при старте Docker.
+Закрепите адрес $LocalAddress за компьютером в DHCP-настройках роутера, чтобы локальный URL не менялся.
 Запуск: pwsh -File scripts/start-hdrezka-proxy.ps1
 Остановка: docker compose -f compose.hdrezka.yml down
 После обновления куки проверки: pwsh -File scripts/start-hdrezka-proxy.ps1 -ReloadClearance
-После перезапуска контейнера tunnel адрес может измениться; повторный запуск скрипта покажет текущий URL.
+Если телевизор не открывает адрес, запустите PowerShell от администратора и выполните:
+pwsh -File scripts/allow-hdrezka-lan.ps1 -LocalAddress $LocalAddress -Port $Port
 "@
 Set-Content -LiteralPath (Join-Path $stateDirectory 'TV-settings.txt') -Value $instructions -Encoding utf8
 for ($attempt = 0; $attempt -lt 18; $attempt++) {
     if (Test-ProxyHealth $proxyUrl) {
-        Write-Output ('Docker HDRezka HTTPS proxy ready. URL: ' + $proxyUrl)
+        Write-Output ('Docker HDRezka LAN proxy ready. URL: ' + $proxyUrl)
         Write-Output 'TV instructions saved to .hdrezka-relay/TV-settings.txt.'
         exit 0
     }
     Start-Sleep -Seconds 2
 }
-throw 'The Docker containers are running and the URL is saved, but DNS/HTTPS is not ready yet. Re-run the launcher shortly.'
+throw 'The Docker proxy is running, but its local address is not responding. Check the LAN address and Windows firewall.'
