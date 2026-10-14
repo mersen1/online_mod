@@ -38,7 +38,7 @@ The private proxy and HTTPS tunnel run in Docker Compose. On Windows, start Dock
 pwsh -File scripts/start-hdrezka-proxy.ps1
 ```
 
-The launcher creates a private access token, builds the proxy if its image is missing, starts the two containers, checks HTTPS and writes the current URL and TV instructions to `.hdrezka-relay/TV-settings.txt`. Use `-Rebuild` after changing the proxy server code. Enter that complete URL in **Свой прокси для HDrezka**, set the mirror to `https://kvk.zone`, enable both HDRezka proxy toggles, and log out/in again. Keep the PC and Docker Desktop running during viewing. Both containers use `restart: always` and start when the Docker engine starts.
+The launcher creates an eight-digit access code for easy TV entry, builds the proxy if its image is missing, starts the two containers, checks HTTPS and writes the current URL and TV instructions to `.hdrezka-relay/TV-settings.txt`. Existing longer tokens remain supported; use `-Rebuild -ShortenKey` to replace one with a numeric code. Use `-Rebuild` after changing the proxy server code. Enter that complete URL in **Свой прокси для HDrezka**, set the mirror to `https://kvk.zone`, enable both HDRezka proxy toggles, and log out/in again. Keep the PC and Docker Desktop running during viewing. Both containers use `restart: always` and start when the Docker engine starts.
 
 The HTTPS URL uses a [Cloudflare Quick Tunnel](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/); its hostname changes when the tunnel starts again and it has no uptime guarantee. Re-running the launcher reuses running containers and shows their current URL. Stop them with:
 
@@ -46,7 +46,7 @@ The HTTPS URL uses a [Cloudflare Quick Tunnel](https://developers.cloudflare.com
 docker compose -f compose.hdrezka.yml down
 ```
 
-The server only forwards requests to its configured HTTPS mirror and checks followed redirects before forwarding cookies. It exposes the existing worker protocol, including `cookie_plus`; account credentials and cookies are not stored or logged by the proxy. Token/state files are ignored by Git and excluded from Docker build contexts. Local access is bound to `127.0.0.1`; the public endpoint requires the private URL token. Mirror changes require updating `HDREZKA_RELAY_MIRROR` in `compose.hdrezka.yml` and the matching setting in the mod.
+The server only forwards requests to its configured HTTPS mirror and checks followed redirects before forwarding cookies. It exposes the existing worker protocol, including `cookie_plus`; account credentials and cookies are not stored or logged by the proxy. Token/state files are ignored by Git and excluded from Docker build contexts. Local access is bound to `127.0.0.1`; the public endpoint requires the private URL code and limits incorrect-code attempts per client. Mirror changes require updating `HDREZKA_RELAY_MIRROR` in `compose.hdrezka.yml` and the matching setting in the mod.
 
 The October 14 authenticated probe successfully opened Interstellar, Midsommar and Breaking Bad through the external HTTPS Docker route, including voices, seasons and episodes. Their tested stream responses require Premium and return a 60-second placeholder instead of the selected film. The proxy fixes metadata transport; it does not grant Premium access. See [the probe](docs/hdrezka-proxy-probe.json). Full-film playback on a physical television remains unverified.
 

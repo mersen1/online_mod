@@ -1,4 +1,4 @@
-param([int]$Port = 8787, [switch]$Rebuild)
+param([int]$Port = 8787, [switch]$Rebuild, [switch]$ShortenKey)
 $ErrorActionPreference = 'Stop'
 $projectDirectory = Split-Path -Parent $PSScriptRoot
 $stateDirectory = Join-Path $projectDirectory '.hdrezka-relay'
@@ -7,10 +7,8 @@ $tokenFile = Join-Path $stateDirectory 'token'
 $composeFile = Join-Path $projectDirectory 'compose.hdrezka.yml'
 Get-Command docker -ErrorAction Stop | Out-Null
 New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
-if (-not (Test-Path -LiteralPath $tokenFile)) {
-    $tokenBytes = New-Object byte[] 24
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($tokenBytes)
-    $privateToken = [Convert]::ToBase64String($tokenBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+if ($ShortenKey -or -not (Test-Path -LiteralPath $tokenFile)) {
+    $privateToken = [System.Security.Cryptography.RandomNumberGenerator]::GetInt32(10000000, 100000000).ToString()
     Set-Content -LiteralPath $tokenFile -Value $privateToken -Encoding utf8
 } else { $privateToken = (Get-Content -LiteralPath $tokenFile -Raw).Trim() }
 
@@ -24,7 +22,13 @@ try {
     $env:HDREZKA_RELAY_PORT = $Port.ToString()
     & docker image inspect online-mod-hdrezka-proxy:latest 2>$null | Out-Null
     $imageExists = $LASTEXITCODE -eq 0
-    if ($Rebuild -or -not $imageExists) { & docker compose -f $composeFile up -d --build }
+    if ($ShortenKey) {
+        # The running proxy has read the old code into memory. Recreate it before
+        # Compose waits for the health check to match the newly written code.
+        & docker compose -f $composeFile up -d --build --force-recreate proxy
+        if ($LASTEXITCODE -ne 0) { throw 'Docker could not activate the shorter proxy code.' }
+        & docker compose -f $composeFile up -d --no-build
+    } elseif ($Rebuild -or -not $imageExists) { & docker compose -f $composeFile up -d --build }
     else { & docker compose -f $composeFile up -d --no-build }
     if ($LASTEXITCODE -ne 0) { throw 'Docker Compose could not start the HDRezka proxy.' }
 } finally { $env:HDREZKA_RELAY_PORT = $previousPort }

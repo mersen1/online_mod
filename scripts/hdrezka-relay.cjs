@@ -3,15 +3,18 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const { randomBytes, timingSafeEqual } = require('node:crypto');
+const { randomInt, timingSafeEqual } = require('node:crypto');
+const { isIP } = require('node:net');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 
 function createRelay({ token, origin = 'https://kvk.zone', fetchImpl = fetch } = {}) {
-  if (!/^[a-zA-Z0-9_-]{24,128}$/.test(token || '')) throw new Error('A private relay token of at least 24 characters is required.');
+  if (!/^(?:\d{8}|[a-zA-Z0-9_-]{24,128})$/.test(token || '')) throw new Error('An eight-digit code or a private token of at least 24 characters is required.');
   const allowed = new URL(origin);
   if (allowed.protocol !== 'https:' || allowed.username || allowed.password || allowed.port) throw new Error('The mirror must use HTTPS without a custom port.');
   const expected = Buffer.from(token);
+  const failures = new Map();
+  const attemptWindow = 60000;
   const workerSource = fs.readFileSync(path.join(__dirname, '../cloudflare_worker.js'), 'utf8');
 
   async function restrictedFetch(input, options = {}) {
@@ -57,9 +60,31 @@ function createRelay({ token, origin = 'https://kvk.zone', fetchImpl = fetch } =
       outgoing.end(message);
     }
     try {
+      const forwardedIp = incoming.headers['cf-connecting-ip'];
+      const clientIp = typeof forwardedIp === 'string' && isIP(forwardedIp) ? forwardedIp : incoming.socket.remoteAddress;
+      const now = Date.now();
+      const previous = failures.get(clientIp);
+      if (previous && previous.until <= now) failures.delete(clientIp);
+      if (previous && previous.until > now && previous.count >= 8) {
+        outgoing.setHeader('Retry-After', Math.ceil((previous.until - now) / 1000));
+        return fail(429, 'Too many incorrect codes. Try again shortly.');
+      }
       const prefix = incoming.url.split('/')[1] || '';
       const actual = Buffer.from(prefix);
-      if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return fail(404, 'Not found');
+      if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+        if (failures.size >= 1024) {
+          for (const [address, record] of failures) if (record.until <= now) failures.delete(address);
+          if (failures.size >= 1024 && !failures.has(clientIp)) {
+            outgoing.setHeader('Retry-After', 60);
+            return fail(429, 'Too many incorrect codes. Try again shortly.');
+          }
+        }
+        const record = failures.get(clientIp) || { count: 0, until: now + attemptWindow };
+        record.count++;
+        failures.set(clientIp, record);
+        return fail(404, 'Not found');
+      }
+      failures.delete(clientIp);
       if (incoming.method === 'OPTIONS') { outgoing.writeHead(204, cors); outgoing.end(); return; }
       if (!['GET', 'HEAD', 'POST'].includes(incoming.method)) return fail(405, 'Method not allowed');
       const suffix = incoming.url.slice(prefix.length + 2);
@@ -111,7 +136,7 @@ if (require.main === module) {
   const stateDirectory = path.join(__dirname, '../.hdrezka-relay');
   if (!process.env.HDREZKA_RELAY_TOKEN_FILE) fs.mkdirSync(stateDirectory, { recursive: true });
   const tokenFile = process.env.HDREZKA_RELAY_TOKEN_FILE || path.join(stateDirectory, 'token');
-  const token = process.env.HDREZKA_RELAY_TOKEN || (fs.existsSync(tokenFile) ? fs.readFileSync(tokenFile, 'utf8').trim() : randomBytes(24).toString('base64url'));
+  const token = process.env.HDREZKA_RELAY_TOKEN || (fs.existsSync(tokenFile) ? fs.readFileSync(tokenFile, 'utf8').trim() : String(randomInt(10000000, 100000000)));
   if (!fs.existsSync(tokenFile)) fs.writeFileSync(tokenFile, token + '\n', { mode: 0o600 });
   const port = Number(process.env.HDREZKA_RELAY_PORT || 8787);
   const server = createRelay({ token, origin: process.env.HDREZKA_RELAY_MIRROR || 'https://kvk.zone' });

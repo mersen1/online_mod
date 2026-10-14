@@ -5,16 +5,31 @@ const { createRelay } = require('../scripts/hdrezka-relay.cjs');
 const { harness } = require('./helpers/plugin.cjs');
 const token = 'private-test-token-0123456789';
 
-async function relay(t, fetchImpl) {
-  const server = createRelay({ token, fetchImpl });
+async function relay(t, fetchImpl, accessCode = token) {
+  const server = createRelay({ token: accessCode, fetchImpl });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); }));
-  return 'http://127.0.0.1:' + server.address().port + '/' + token + '/';
+  return 'http://127.0.0.1:' + server.address().port + '/' + accessCode + '/';
 }
 function link(base, target, extra = '') {
   return base + 'enc2/' + encodeURIComponent(btoa(extra + target)) + '/page.txt?jacred.test';
 }
+
+test('Eight-digit TV codes work and incorrect-code retries are bounded', async (t) => {
+  const code = '12345678';
+  const base = await relay(t, () => assert.fail('No upstream request expected'), code);
+  assert.equal((await fetch(base + 'health')).status, 200);
+  const wrong = base.replace(code, '87654321') + 'health';
+  for (let i = 0; i < 8; i++) assert.equal((await fetch(wrong)).status, 404);
+  const limited = await fetch(wrong);
+  assert.equal(limited.status, 429);
+  assert.ok(Number(limited.headers.get('retry-after')) > 0);
+  // The limit is scoped to the client, not all TVs using this relay.
+  const anotherClient = await fetch(base + 'health', { headers: { 'CF-Connecting-IP': '192.0.2.2' } });
+  assert.equal(anotherClient.status, 200);
+  assert.throws(() => createRelay({ token: '1234' }), /eight-digit/);
+});
 
 test('Relay requires a private token and handles browser preflight', async (t) => {
   const base = await relay(t, () => assert.fail('No upstream request expected'));
