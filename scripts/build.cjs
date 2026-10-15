@@ -3,12 +3,22 @@ const path = require('node:path');
 const acorn = require('acorn');
 const root = path.resolve(__dirname, '..');
 
+function browserParser() {
+  const directory = path.dirname(require.resolve('acorn/package.json'));
+  const license = fs.readFileSync(path.join(directory, 'LICENSE'), 'utf8');
+  const source = fs.readFileSync(require.resolve('acorn'), 'utf8');
+  // Isolate the UMD build from Lampa's globals and preserve the upstream license.
+  return '/* Acorn ' + acorn.version + '\n' + license + '*/\nvar Acorn = (function () {\n' +
+    'var module = { exports: {} };\nvar exports = module.exports;\n' + source + '\nreturn module.exports;\n})();\n';
+}
+
 function build() {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'src/manifest.json'), 'utf8'));
   const modules = manifest.files.map((file) => {
     const source = fs.readFileSync(path.join(root, 'src', file.path), 'utf8').replace(/\r\n/g, '\n');
     return source.replace(/^(?=.+)/gm, '    ') + file.after;
   });
+  modules.unshift(browserParser().replace(/\r\n/g, '\n').replace(/^(?=.+)/gm, '    '));
   const bundle = '// Generated from src/ by scripts/build.cjs. Edit src/, then run pnpm build.\n' + manifest.intro + modules.join('') + manifest.outro;
   acorn.parse(bundle, { ecmaVersion: 5 });
   return bundle;

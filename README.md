@@ -16,7 +16,7 @@ Repository mirror:
 https://raw.githubusercontent.com/mersen1/online_mod/main/online_mod.js
 ```
 
-Current plugin version: `14.10.2026-mersen1.5`. The Pages URL stays the same across releases. Restart Lampa after an update and check the version in Online Mod settings. Disable the original extension when switching: both register the `online_mod` component.
+Current plugin version: `15.10.2026-mersen1.6`. The Pages URL stays the same across releases. Restart Lampa after an update and check the version in Online Mod settings. Disable the original extension when switching: both register the `online_mod` component.
 
 ## HDRezka and Kinogo on TVs
 
@@ -111,7 +111,7 @@ Edit `src/`, then run `pnpm build`. Commit the generated root `online_mod.js` wi
 | `test/` | Provider tests and jQuery/jsdom playback fixtures |
 | `docs/` | Review and bounded live-probe reports |
 
-[JSON5](https://json5.org/) handles JavaScript-style player data without executing optional P2P callbacks. Its ES5 browser build is bundled; no runtime package download is required. [jsdom](https://github.com/jsdom/jsdom) and jQuery are development-only dependencies for realistic DOM tests. Upstream provider modules still share the original closure; they are not ES modules. Other upstream plugins and worker files remain in the repository.
+[Acorn](https://github.com/acornjs/acorn) locates complete player configuration values, including strings, regular expressions and optional P2P functions. The build inlines its pinned ES5 distribution and MIT license before the manifest modules. [JSON5](https://json5.org/) then reads only the permitted data fields; callbacks are never executed. Both parsers are bundled, with no runtime package download on TVs. [tough-cookie](https://github.com/salesforce/tough-cookie) is a Node-only relay dependency: each request gets its own temporary cookie jar for redirects, with updates returned through `cookie_plus`. [jsdom](https://github.com/jsdom/jsdom) and jQuery are development-only dependencies for realistic DOM tests. Upstream provider modules still share the original closure; they are not ES modules. Other upstream plugins and worker files remain in the repository.
 
 ## Live probes and publication
 
@@ -124,4 +124,4 @@ pnpm probe:playback
 
 The `Check and publish plugin` workflow validates pushes to `main`, packages static files in `dist/` and deploys them to GitHub Pages. Failed checks stop publication. Sources and development dependencies are excluded from the Pages artifact. The Surge workflow runs only in upstream.
 
-No upstream LICENSE file was found. This fork does not assign a new license to upstream code; bundled JSON5 retains its own MIT notice.
+No upstream LICENSE file was found. This fork does not assign a new license to upstream code; bundled Acorn and JSON5 retain their own MIT notices.

@@ -44,7 +44,7 @@ function kinogo(component, _object) {
 
   function moviePage(item) {
     readPage(item.link, false, function (str) {
-      if (/makePlayer\(\{/.test(str)) return video.loadMarkup(str, object, item.title);
+      if (Utils.findPlayerConfig(str)) return video.loadMarkup(str, object, item.title);
       var page = html(str);
       var player = '';
       page.find('iframe').each(function () {
@@ -52,7 +52,7 @@ function kinogo(component, _object) {
         src = component.fixLink(src, item.link);
         if (!player && /^https?:\/\/api\.(?:nextembed\.ws|ortified\.ws|kinogram\.best)\/embed\//i.test(src)) player = src;
       });
-      if (player) video.loadEmbed(player, object, item.title);
+      if (player) video.loadEmbed(player, object, item.title, prox);
       else component.empty(Lampa.Lang.translate('online_mod_kinogo_unsupported'));
     }, function (a, c) { component.empty(network.errorDecode(a, c)); });
   }

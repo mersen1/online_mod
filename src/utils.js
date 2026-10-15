@@ -184,44 +184,33 @@ function isMediaUrl(url, extension) {
   return typeof url === 'string' && new RegExp('\\.' + extension + '$', 'i').test(url.split(/[?#]/)[0]);
 }
 
-function parsePlayerConfig(str) {
-  // Parse top-level data fields separately: optional P2P callbacks are not data.
+function parsePlayerConfig(str, offset) {
+  // Acorn locates complete values; JSON5 reads only the permitted data fields.
   var result = {};
-  var depth = 0;
-  var quote = '';
-  var escaped = false;
-  var comment = '';
-  var start = 1;
   var allowed = ['title', 'id', 'blocked', 'source', 'playlist', 'qualityByWidth'];
-  function field(end) {
-    try {
-      var data = JSON5.parse('{' + str.substring(start, end) + '}');
-      Object.keys(data).forEach(function (key) {
-        if (allowed.indexOf(key) !== -1) result[key] = data[key];
-      });
-    } catch (e) {}
-    start = end + 1;
-  }
-  for (var i = 0; i < str.length; i++) {
-    var ch = str.charAt(i);
-    var next = str.charAt(i + 1);
-    if (comment === '//') { if (ch === '\n' || ch === '\r') comment = ''; continue; }
-    if (comment === '/*') { if (ch === '*' && next === '/') { comment = ''; i++; } continue; }
-    if (quote) {
-      if (escaped) escaped = false;
-      else if (ch === '\\') escaped = true;
-      else if (ch === quote) quote = '';
-      continue;
-    }
-    if (ch === '/' && (next === '/' || next === '*')) { comment = ch + next; i++; continue; }
-    if (ch === '"' || ch === "'") { quote = ch; continue; }
-    if (ch === '{' || ch === '[' || ch === '(') depth++;
-    else if (ch === '}' || ch === ']' || ch === ')') {
-      if (depth === 1 && ch === '}') field(i);
-      depth--;
-    } else if (ch === ',' && depth === 1) field(i);
-  }
+  try {
+    var node = Acorn.parseExpressionAt(str, offset || 0, { ecmaVersion: 2020 });
+    if (node.type !== 'ObjectExpression') return null;
+    node.properties.forEach(function (property) {
+      if (property.type !== 'Property' || property.computed || property.method || property.kind !== 'init') return;
+      var key = property.key.type === 'Identifier' ? property.key.name : property.key.value;
+      if (allowed.indexOf(key) === -1) return;
+      try {
+        result[key] = JSON5.parse(str.substring(property.value.start, property.value.end));
+      } catch (e) {}
+    });
+  } catch (e) { return null; }
   return result.source || result.playlist ? result : null;
+}
+
+function findPlayerConfig(str) {
+  if (typeof str !== 'string') return null;
+  var calls = /\bmakePlayer\s*\(/g;
+  while (calls.exec(str)) {
+    var config = parsePlayerConfig(str, calls.lastIndex);
+    if (config) return config;
+  }
+  return null;
 }
 
 function setCurrentFanserialsHost(host) {
@@ -538,6 +527,7 @@ var Utils = {
   isChallenge: isChallenge,
   isMediaUrl: isMediaUrl,
   parsePlayerConfig: parsePlayerConfig,
+  findPlayerConfig: findPlayerConfig,
   decodeSecret: decodeSecret,
   isDebug: isDebug,
   isDebug2: isDebug2,

@@ -71,6 +71,63 @@ test('JSON5 player parser reads data and ignores P2P functions without executing
   assert.equal(h.context.executed, undefined);
 });
 
+test('Player parser ignores callbacks containing regex braces, comments and modern syntax', () => {
+  const h = harness();
+  const config = "{p2p:{callback:()=>{globalThis.executed=true;return /[}\\/]/.test(`value });`);}},/* data */source:{hls:'https://cdn.example/master.m3u8',audio:{names:[]}},title:'Fixture });'}";
+  const data = h.plugin.Utils.parsePlayerConfig(config);
+  assert.ok(data);
+  assert.equal(data.source.hls, 'https://cdn.example/master.m3u8');
+  assert.equal(data.title, 'Fixture });');
+  assert.equal(h.context.executed, undefined);
+  assert.equal('p2p' in data, false);
+  for (const config of [
+    '{source:(globalThis.executed=true,{hls:"https://cdn.example/master.m3u8"})}',
+    '{get source(){globalThis.executed=true;return {};}}',
+    '{[globalThis.executed=true]:{hls:"https://cdn.example/master.m3u8"}}'
+  ]) assert.equal(h.plugin.Utils.parsePlayerConfig(config), null);
+  assert.equal(h.context.executed, undefined);
+});
+
+test('Collaps reads an entire player argument even when strings contain call delimiters', () => {
+  const h = harness({ dom: true });
+  try {
+    const provider = new h.plugin.collaps(h.component, h.object, false);
+    provider.loadMarkup("<script>function makePlayer(config) {} makePlayer ( /* config */ {title:'Fixture }); ending',source:{hls:'https://cdn.example/master.m3u8',audio:{names:[]}},p2p:{callback:function(){return /}/;}}});</script>", h.object, 'Fixture');
+    const item = h.events.find(([event]) => event === 'append')?.[1];
+    assert.ok(item, JSON.stringify(h.events));
+    item.trigger('hover:enter');
+    assert.equal(h.events.find(([event]) => event === 'play')[1].url, 'https://cdn.example/master.m3u8?vp');
+    provider.destroy();
+  } finally { h.close(); }
+});
+
+test('Kinogo keeps search, movie and embed metadata on its proxy without rerouting media', () => {
+  const h = harness({ dom: true, initialized: true, platform: 'tizen', msx: true, storage: {
+    online_mod_proxy_other: true, online_mod_proxy_other_url: 'https://custom.example', online_mod_proxy_collaps: false
+  } });
+  try {
+    const provider = new h.plugin.kinogo(h.component, h.object);
+    provider.search(h.object, 1, []);
+    const search = h.requests.shift();
+    assert.equal(new URL(search.url).hostname, 'custom.example');
+    search.success('<div class="card__title"><a href="/1-fixture.html">Fixture (2020)</a></div>');
+    const movie = h.requests.shift();
+    assert.equal(new URL(movie.url).hostname, 'custom.example');
+    movie.success('<script>function makePlayer(config) {}</script><iframe src="https://api.nextembed.ws/embed/movie/1"></iframe>');
+    const embed = h.requests.shift();
+    assert.equal(new URL(embed.url).hostname, 'custom.example');
+    const target = atob(decodeURIComponent(embed.url.split('/enc2/')[1].split('/')[0]));
+    assert.ok(target.includes('param/Origin=https%3A%2F%2Fapi.nextembed.ws/'));
+    assert.ok(target.endsWith('https://api.nextembed.ws/embed/movie/1'));
+    embed.success("makePlayer({source:{hls:'https://cdn.example/master.m3u8',audio:{names:[]},cc:[{name:'English',url:'https://cdn.example/subs.vtt'}]}});");
+    h.events.find(([event]) => event === 'append')[1].trigger('hover:enter');
+    const played = h.events.find(([event]) => event === 'play')[1];
+    assert.equal(played.url, 'https://cdn.example/master.m3u8?vp');
+    assert.equal(played.subtitles[0].url, 'https://cdn.example/subs.vtt');
+    provider.destroy();
+  } finally { h.close(); }
+});
+
 test('Kinogo selects a movie, parses a NextEmbed player and supplies HLS to Lampa', () => {
   const h = harness({ dom: true });
   try {

@@ -21,5 +21,8 @@
     "jquery": "3.7.1",
     "jsdom": "30.1.2",
     "json5": "2.2.3"
+  },
+  "dependencies": {
+    "tough-cookie": "6.0.2"
   }
 }

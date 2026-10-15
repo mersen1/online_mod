@@ -2,6 +2,16 @@
 
 Target: Lampa MX inside Media Station X, including Samsung/Tizen and LG/WebOS. HDRezka and Kinogo are the user's priority sources. The checks run on a Windows workstation and do not certify hardware decoding or playback on every television.
 
+## Correctness follow-up — 2026-10-15, mersen1.6
+
+The private relay now uses tough-cookie for each individual redirect chain. Updated sessions are applied before following the next same-origin URL, and intermediate Set-Cookie headers, including deletions, are retained in the final cookie_plus reply. Cookie paths, expiry and domains are honored during redirects. The jar is discarded after the request; account sessions are never shared between clients. Existing mirror restrictions, browser clearance and incorrect-code limits are retained. The Docker image installs the pinned production dependencies from the lockfile.
+
+Acorn now locates complete player configuration fields, and JSON5 reads only the permitted data values. Regular expressions, comments, functions and strings containing `});` no longer break field boundaries. Getters, computed properties and executable source expressions are not evaluated. The build embeds Acorn's ES5 distribution with its MIT notice from the pinned dependency. The generated plugin grows by approximately 60 KiB when gzip-compressed.
+
+Kinogo now passes its metadata proxy to the embedded player's page request, while preserving the separate Collaps media-proxy and stream-relay settings. Player function declarations are skipped when locating a configuration and do not hide a supported iframe.
+
+All 128 tests and the bundle/ES5 checks pass locally, including five new regression tests that failed before the fixes. Tests use fixture upstream responses; no new external-service or physical-TV playback claims are made by this follow-up.
+
 ## Docker proxy follow-up — 2026-10-14, mersen1.5
 
 Public HDRezka workers returned random movie redirects, ending in HTTP 500/503 on authenticated page requests. A private worker-compatible proxy now runs in Docker on this PC, with a second Docker container providing an HTTPS tunnel. The published client accepts its URL through **Свой прокси для HDrezka**. No personal endpoint or account data is embedded in the plugin. The setting controls both login and provider requests, preserves other sources' routes, and prevents public fallback for an explicit URL.

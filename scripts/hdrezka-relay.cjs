@@ -7,6 +7,7 @@ const { randomInt, timingSafeEqual } = require('node:crypto');
 const { isIP } = require('node:net');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
+const { CookieJar } = require('tough-cookie');
 
 function parseCookies(value) {
   const cookies = new Map();
@@ -55,10 +56,19 @@ function createRelay({ token, origin = 'https://kvk.zone', clearance = null, fet
     let request = new Request(input);
     let body = request.method !== 'GET' && request.method !== 'HEAD' ? await request.arrayBuffer() : undefined;
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(15000)]);
+    // A jar belongs only to this request's redirect chain, never to another TV/client.
+    const jar = new CookieJar();
+    for (const [name, value] of parseCookies(request.headers.get('cookie') || '')) {
+      jar.setCookieSync(name + '=' + value + '; Path=/; Secure', allowed.origin, { ignoreError: true });
+    }
+    const receivedCookies = [];
     for (let redirects = 0; redirects <= 5; redirects++) {
       const url = new URL(request.url);
       if (url.origin !== allowed.origin || url.username || url.password) throw new Error('Only the configured HDRezka mirror is allowed.');
       const upstreamHeaders = new Headers(request.headers);
+      upstreamHeaders.delete('cookie');
+      const accountCookies = jar.getCookieStringSync(url.href);
+      if (accountCookies) upstreamHeaders.set('cookie', accountCookies);
       if (browserCookies) {
         const cookies = parseCookies(upstreamHeaders.get('cookie') || '');
         for (const [name, value] of browserCookies) cookies.set(name, value);
@@ -66,8 +76,20 @@ function createRelay({ token, origin = 'https://kvk.zone', clearance = null, fet
         upstreamHeaders.set('user-agent', browserUserAgent);
       }
       const response = await fetchImpl(new Request(request.url, { method: request.method, headers: upstreamHeaders, body, signal }), { ...options, redirect: 'manual', signal });
+      for (const cookie of response.headers.getSetCookie()) {
+        if (jar.setCookieSync(cookie, url.href, { ignoreError: true })) receivedCookies.push(cookie);
+      }
       const location = response.headers.get('location');
-      if (options.redirect === 'manual' || ![301, 302, 303, 307, 308].includes(response.status) || !location) return response;
+      if (options.redirect === 'manual' || ![301, 302, 303, 307, 308].includes(response.status) || !location) {
+        if (!redirects) return response;
+        // cookie_plus must expose rotations/deletions from intermediate responses too.
+        const headers = new Headers(response.headers);
+        headers.delete('set-cookie');
+        receivedCookies.forEach((cookie) => headers.append('set-cookie', cookie));
+        const result = new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+        Object.defineProperty(result, 'url', { value: response.url || request.url });
+        return result;
+      }
       const next = new URL(location, url);
       if (next.origin !== allowed.origin || next.username || next.password) {
         await response.body?.cancel();

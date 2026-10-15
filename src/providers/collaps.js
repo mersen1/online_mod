@@ -130,10 +130,12 @@ function collaps(component, _object, prefer_dash) {
     extract = null;
   };
 
-  this.loadEmbed = function (url, nextObject, title) {
+  this.loadEmbed = function (url, nextObject, title, metadata_proxy) {
     object = nextObject;
     select_title = title || object.movie.title;
     var origin = Utils.parseURL(url).origin;
+    if (metadata_proxy === undefined) metadata_proxy = prox;
+    var metadata_encoded = metadata_proxy ? 'param/User-Agent=' + encodeURIComponent(user_agent) + '/param/Origin=' + encodeURIComponent(origin) + '/param/Referer=' + encodeURIComponent(origin + '/') + '/' : '';
     if (prox) {
       prox_enc_stream = 'param/User-Agent=' + encodeURIComponent(user_agent) + '/';
       prox_enc_stream += 'param/Origin=' + encodeURIComponent(origin) + '/';
@@ -145,7 +147,7 @@ function collaps(component, _object, prefer_dash) {
     }
     network.clear();
     network.timeout(10000);
-    network[net_method](component.proxyLink(url, prox, prox_enc, 'enc2t'), parse, function (a, c) {
+    network[net_method](component.proxyLink(url, metadata_proxy, metadata_encoded, 'enc2t'), parse, function (a, c) {
       component.empty(network.errorDecode(a, c));
     }, false, { dataType: 'text', headers: play_headers });
   };
@@ -158,8 +160,7 @@ function collaps(component, _object, prefer_dash) {
 
   function parse(str) {
     component.loading(false);
-    var find = (str || '').match(/makePlayer\(({[\s\S]*?})\);/);
-    var json = find && Utils.parsePlayerConfig(find[1]);
+    var json = Utils.findPlayerConfig(str);
 
     if (json) {
       extract = json;
